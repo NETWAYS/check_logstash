@@ -123,11 +123,11 @@ if response.code == "200"
   end
   
   if critstatus
-      print "Critical: " + critstring
+      print "CRITICAL: " + critstring
   elsif warnstatus
-      print "Warning: " + warnstring
+      print "WARNING: " + warnstring
   else
-      print "Ok: Logstash is doing fine"
+      print "OK: Logstash is doing fine"
   end
   
   print " In-flight events: #{inflight}" 
