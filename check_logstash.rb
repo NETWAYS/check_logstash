@@ -62,8 +62,12 @@ options = {}
 OptionParser.new do |opts|
     opts.banner = "Usage: check_logstash [options]"
     
-    opts.on('-h', '--hostname HOST', 'Logstash host') { |v| options[:lshost] = v }
+    opts.on('-H', '--hostname HOST', 'Logstash host') { |v| options[:lshost] = v }
     opts.on('-p', '--hostname PORT', 'Logstash API port') { |v| options[:lsport] = v }
+    opts.on_tail("-h", "--help", "Show this message") do
+      puts opts
+      exit
+    end
 end.parse!
 
 #puts options
