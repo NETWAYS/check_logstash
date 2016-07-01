@@ -57,6 +57,8 @@ warnstring = ""
 # reference: http://ruby-doc.org/stdlib-1.9.3/libdoc/optparse/rdoc/OptionParser.html
 # reference: http://stackoverflow.com/questions/4244611/pass-variables-to-ruby-script-via-command-line
 
+ARGV << '-h' if ARGV.empty?
+
 options = {}
 
 OptionParser.new do |opts|
