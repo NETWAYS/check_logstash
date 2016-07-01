@@ -1,0 +1,18 @@
+name: check_logstash
+description: "file:///README.md"
+url: "https://github.com/widhalmt/check_logstash"
+tags: Logstash
+vendor: Linux
+target: Log
+type: Plugin
+license: gplv3
+releases: 
+  - 
+    name: 0.1 
+    description: "0.1 Release"
+    files: 
+      - 
+        name: check_logstash.rb 
+        url: "file:///check_logstash.rb"
+        description: "First alpha release"
+        checksum: 654ecd408e0c241b891b132686685e6d
