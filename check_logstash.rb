@@ -5,12 +5,13 @@
 # E-Mail: thomas.widhalm@netways.de
 # Date : 01/07/2016
 #
-# Version: 0.2.0
+# Version: 0.3.0
 #
 # This program is free software; you can redistribute it or modify
 # it under the terms of the GNU General Public License version 3.0
 #
 # Changelog:
+#	- 0.3.0 change thresholds to adopt plugin syntax, change api calls for Logstash v5-alpha5
 # 	- 0.2.0 add heap and file descriptor thresholds
 # 	- 0.1.0 initial, untested prototype
 #
@@ -111,27 +112,11 @@ class CheckLogstash
 
         opts.on('-H', '--hostname HOST', 'Logstash host') { |v| check.host = v }
         opts.on('-p', '--hostname PORT', 'Logstash API port') { |v| check.port = v.to_i }
-        opts.on("--file-descriptor-threshold-crit CRIT", "The percentage relative to the process file descriptor limit on which to be a critical result.") { |v| check.critical_file_descriptor_percent = v.to_i }
         opts.on("--file-descriptor-threshold-warn WARN", "The percentage relative to the process file descriptor limit on which to be a warning result.") { |v| check.warning_file_descriptor_percent = v.to_i }
+        opts.on("--file-descriptor-threshold-crit CRIT", "The percentage relative to the process file descriptor limit on which to be a critical result.") { |v| check.critical_file_descriptor_percent = v.to_i }
+        opts.on("--heap-usage-threshold-warn WARN", "The percentage relative to the heap size limit on which to be a warning result.") { |v| check.warning_heap_percent = v.to_i }
+        opts.on("--heap-usage-threshold-crit CRIT", "The percentage relative to the heap size limit on which to be a critical result.") { |v| check.critical_heap_percent = v.to_i }
 
-        opts.on("--heap-usage-threshold [WARN:]CRIT", "The percentage relative to the heap size limit on which to be a warning or critical result.") do |v|
-          options_error.call("--heap-usage-threshold requires an argument") if v.nil?
-
-          values = v.split(":")
-          options_error.call("--file-descriptor-threshold has invalid argument #{v}") if values.count == 0 || values.count > 2
-
-          begin
-            if values.count == 1
-              check.warning_heap_percent = nil
-              check.critical_heap_percent = values[0].to_i
-            else
-              check.warning_heap_percent =  values[0].to_i
-              check.critical_heap_percent = values[1].to_i
-            end
-          rescue ArgumentError => e
-            options_error.call("--heap-usage-threshold has invalid argument. #{e.message}")
-          end
-        end
         opts.on_tail("-h", "--help", "Show this message") do
           puts opts
           exit
