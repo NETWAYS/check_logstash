@@ -275,9 +275,9 @@ class CheckLogstash
       PerfData.report(result, "process.cpu.percent", nil, nil, 0, 100),
       PerfData.report(result, "mem.heap_used_percent", nil, nil, 0, 100),
       PerfData.report(result, "jvm.threads.count", nil, nil, 0, nil),
-      PerfData.report_counter(result, "events.in", nil, nil, 0, nil),
-      PerfData.report_counter(result, "events.filtered", nil, nil, 0, nil),
-      PerfData.report_counter(result, "events.out", nil, nil, 0, nil),
+      PerfData.report_counter(result, "pipeline.events.in", nil, nil, 0, nil),
+      PerfData.report_counter(result, "pipeline.events.filtered", nil, nil, 0, nil),
+      PerfData.report_counter(result, "pipeline.events.out", nil, nil, 0, nil),
     ].join(" ")
   end
 
