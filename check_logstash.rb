@@ -16,6 +16,12 @@
 #
 #
 # Plugin check for icinga
+#
+# Acknowledgements:
+# 	A big "Thank you, you're awesome!" to Jordan Sissel who used a pull
+# 	request to replace almost all of my code for version 0.2.0 and made
+# 	this so much better. I hope I can keep up to the expectations with
+# 	the next versions.
 
 require "rubygems"
 require "json"
