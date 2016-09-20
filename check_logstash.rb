@@ -111,24 +111,8 @@ class CheckLogstash
 
         opts.on('-H', '--hostname HOST', 'Logstash host') { |v| check.host = v }
         opts.on('-p', '--hostname PORT', 'Logstash API port') { |v| check.port = v.to_i }
-        opts.on("--file-descriptor-threshold [WARN:]CRIT", "The percentage relative to the process file descriptor limit on which to be a warning or critical result.") do |v|
-          options_error.call("--file-descriptor-threshold requires an argument") if v.nil?
-
-          values = v.split(":")
-          options_error.call("--file-descriptor-threshold has invalid argument #{v}") if values.count == 0 || values.count > 2
-          
-          begin
-            if values.count == 1
-              check.warning_file_descriptor_percent = -1
-              check.critical_file_descriptor_percent = values[0].to_i
-            else
-              check.warning_file_descriptor_percent =  values[0].to_i
-              check.critical_file_descriptor_percent = values[1].to_i
-            end
-          rescue ArgumentError => e
-            options_error.call("--file-descriptor-threshold has invalid argument. #{e.message}")
-          end
-        end
+        opts.on("--file-descriptor-threshold-crit CRIT", "The percentage relative to the process file descriptor limit on which to be a critical result.") { |v| check.critical_file_descriptor_percent = v.to_i }
+        opts.on("--file-descriptor-threshold-warn WARN", "The percentage relative to the process file descriptor limit on which to be a warning result.") { |v| check.warning_file_descriptor_percent = v.to_i }
 
         opts.on("--heap-usage-threshold [WARN:]CRIT", "The percentage relative to the heap size limit on which to be a warning or critical result.") do |v|
           options_error.call("--heap-usage-threshold requires an argument") if v.nil?
@@ -270,11 +254,14 @@ class CheckLogstash
     max_file_descriptors = result.get("process.max_file_descriptors")
     open_file_descriptors = result.get("process.open_file_descriptors")
     percent_file_descriptors = (open_file_descriptors.to_f / max_file_descriptors)*100
+    warn_file_descriptors = (max_file_descriptors / 100)*warning_file_descriptor_percent
+    crit_file_descriptors = (max_file_descriptors / 100)*critical_file_descriptor_percent
 
     [
       PerfData.report(result, "process.cpu.percent", nil, nil, 0, 100),
       PerfData.report(result, "mem.heap_used_percent", warning_heap_percent, critical_heap_percent, 0, 100),
       PerfData.report(result, "jvm.threads.count", nil, nil, 0, nil),
+      PerfData.report(result, "process.open_file_descriptors", warn_file_descriptors, crit_file_descriptors, 0, max_file_descriptors),
       PerfData.report_counter(result, "pipeline.events.in", nil, nil, 0, nil),
       PerfData.report_counter(result, "pipeline.events.filtered", nil, nil, 0, nil),
       PerfData.report_counter(result, "pipeline.events.out", nil, nil, 0, nil),
