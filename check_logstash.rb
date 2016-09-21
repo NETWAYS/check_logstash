@@ -116,6 +116,43 @@ class CheckLogstash
         opts.on("--file-descriptor-threshold-crit CRIT", "The percentage relative to the process file descriptor limit on which to be a critical result.") { |v| check.critical_file_descriptor_percent = v.to_i }
         opts.on("--heap-usage-threshold-warn WARN", "The percentage relative to the heap size limit on which to be a warning result.") { |v| check.warning_heap_percent = v.to_i }
         opts.on("--heap-usage-threshold-crit CRIT", "The percentage relative to the heap size limit on which to be a critical result.") { |v| check.critical_heap_percent = v.to_i }
+        # the following 2 blocks split : seperated ranges into 2 values. If only one value is given it's used as maximum
+        opts.on("--inflight-events-warn WARN", "Threshold for inflight events to be a warning result. Use min:max for a range.") do |v|
+          options_error.call("--inflight-events-warn requires an argument") if v.nil?
+
+          values = v.split(":")
+          options_error.call("--inflight-events-warn has invalid argument #{v}") if values.count == 0 || values.count > 2
+
+          begin
+            if values.count == 1
+              check.warning_inflight_events_min = -1
+              check.warning_inflight_events_max = values[0].to_i
+            else
+              check.warning_inflight_events_min =  values[0].to_i
+              check.warning_inflight_events_max = values[1].to_i
+            end
+          rescue ArgumentError => e
+            options_error.call("--inflight-events-warn has invalid argument. #{e.message}")
+          end
+        end
+        opts.on("--inflight-events-crit CRIT", "Threshold for inflight events to be a critical result. Use min:max for a range.") do |v|
+          options_error.call("--inflight-events-critical requires an argument") if v.nil?
+
+          values = v.split(":")
+          options_error.call("--inflight-events-critical has invalid argument #{v}") if values.count == 0 || values.count > 2
+
+          begin
+            if values.count == 1
+              check.critical_inflight_events_min = -1
+              check.critical_inflight_events_max = values[0].to_i
+            else
+              check.critical_inflight_events_min =  values[0].to_i
+              check.critical_inflight_events_max = values[1].to_i
+            end
+          rescue ArgumentError => e
+            options_error.call("--inflight-events-crit has invalid argument. #{e.message}")
+          end
+        end
 
         opts.on_tail("-h", "--help", "Show this message") do
           puts opts
@@ -174,6 +211,8 @@ class CheckLogstash
   end
 
   module PerfData
+    # return perfdata formatted string
+    # use for values taken directly from API
     module_function
     def report(result, field, warning=nil, critical=nil, minimum=nil, maximum=nil)
       #'label'=value[UOM];[warn];[crit];[min];[max]
@@ -187,6 +226,15 @@ class CheckLogstash
     end
   end
 
+  module PerfData_derived
+    # return perfdata formatted string
+    # use for derived / computed values
+    module_function
+    def report(label, value, warning=nil, critical=nil, minimum=nil, maximum=nil)
+      format("%s=%s;%s;%s;%s;%s", label, value, warning, critical, minimum, maximum)
+    end
+  end
+
   DEFAULT_PORT = 9600
   DEFAULT_HOST = "127.0.0.1"
 
@@ -194,12 +242,20 @@ class CheckLogstash
   DEFAULT_FILE_DESCRIPTOR_CRITICAL = 95
   DEFAULT_HEAP_WARNING = 70
   DEFAULT_HEAP_CRITICAL = 80
+  DEFAULT_INFLIGHT_EVENTS_WARNING_MIN = nil
+  DEFAULT_INFLIGHT_EVENTS_WARNING_MAX = nil
+  DEFAULT_INFLIGHT_EVENTS_CRITICAL_MIN = nil
+  DEFAULT_INFLIGHT_EVENTS_CRITICAL_MAX = nil
 
   attr_accessor :host, :port
   attr_accessor :warning_file_descriptor_percent
   attr_accessor :critical_file_descriptor_percent
   attr_accessor :warning_heap_percent
   attr_accessor :critical_heap_percent
+  attr_accessor :warning_inflight_events_min
+  attr_accessor :warning_inflight_events_max
+  attr_accessor :critical_inflight_events_min
+  attr_accessor :critical_inflight_events_max
 
   def initialize
     @host = DEFAULT_HOST
@@ -209,6 +265,10 @@ class CheckLogstash
     self.critical_file_descriptor_percent = DEFAULT_FILE_DESCRIPTOR_CRITICAL
     self.warning_heap_percent = DEFAULT_HEAP_WARNING
     self.critical_heap_percent = DEFAULT_HEAP_CRITICAL
+    self.warning_inflight_events_min = DEFAULT_INFLIGHT_EVENTS_WARNING_MIN
+    self.warning_inflight_events_max = DEFAULT_INFLIGHT_EVENTS_WARNING_MAX
+    self.critical_inflight_events_min = DEFAULT_INFLIGHT_EVENTS_CRITICAL_MIN
+    self.critical_inflight_events_max = DEFAULT_INFLIGHT_EVENTS_CRITICAL_MAX
   end
 
   def warning_file_descriptor_percent=(value)
@@ -241,15 +301,18 @@ class CheckLogstash
     percent_file_descriptors = (open_file_descriptors.to_f / max_file_descriptors)*100
     warn_file_descriptors = (max_file_descriptors / 100)*warning_file_descriptor_percent
     crit_file_descriptors = (max_file_descriptors / 100)*critical_file_descriptor_percent
+    inflight_events = (result.get("pipeline.events.out") - result.get("pipeline.events.in")).to_i
 
     [
       PerfData.report(result, "process.cpu.percent", nil, nil, 0, 100),
       PerfData.report(result, "mem.heap_used_percent", warning_heap_percent, critical_heap_percent, 0, 100),
       PerfData.report(result, "jvm.threads.count", nil, nil, 0, nil),
       PerfData.report(result, "process.open_file_descriptors", warn_file_descriptors, crit_file_descriptors, 0, max_file_descriptors),
-      PerfData.report_counter(result, "pipeline.events.in", nil, nil, 0, nil),
-      PerfData.report_counter(result, "pipeline.events.filtered", nil, nil, 0, nil),
+      #PerfData.report_counter(result, "pipeline.events.in", nil, nil, 0, nil),
+      #PerfData.report_counter(result, "pipeline.events.filtered", nil, nil, 0, nil),
       PerfData.report_counter(result, "pipeline.events.out", nil, nil, 0, nil),
+      PerfData_derived.report("inflight_events", inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil)
+      #inflight_perfdata
     ].join(" ")
   end
 
@@ -258,6 +321,7 @@ class CheckLogstash
     [ 
       file_descriptor_health(result),
       heap_health(result),
+      inflight_events_health(result),
     ]
   end
 
@@ -292,6 +356,25 @@ class CheckLogstash
       Warning.new(heap_report)
     else
       OK.new(heap_report)
+    end
+  end
+
+  INFLIGHT_EVENTS_REPORT = "Inflight events: %d"
+  def inflight_events_health(result)
+  # check if inflight events are outside of threshold
+  # find a way to reuse the already computed inflight events
+    inflight_events = (result.get("pipeline.events.out") - result.get("pipeline.events.in")).to_i
+    inflight_events_report = format(INFLIGHT_EVENTS_REPORT, inflight_events)
+    if critical_inflight_events_max && critical_inflight_events_max < inflight_events
+      Critical.new(inflight_events_report)
+    elsif critical_inflight_events_min && critical_inflight_events_min > inflight_events
+      Critical.new(inflight_events_report)
+    elsif warning_inflight_events_max && warning_inflight_events_max < inflight_events
+      Warning.new(inflight_events_report)
+    elsif warning_inflight_events_min && warning_inflight_events_min > inflight_events
+      Warning.new(inflight_events_report)
+    else
+      OK.new(inflight_events_report)
     end
   end
 end
