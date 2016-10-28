@@ -34,3 +34,12 @@ releases:
         url: "file:///check_logstash.rb"
         description: "alpha with inflight events"
         checksum: 732bb57f40650b5dc2595a2f96a67304
+  - 
+    name: 0.5 
+    description: "0.5 Release"
+    files: 
+      - 
+        name: check_logstash.rb 
+        url: "file:///check_logstash.rb"
+        description: "beta, working with Logstash 5.0 release"
+        checksum: b34879f79bbcd20b7c08918d21417d77
