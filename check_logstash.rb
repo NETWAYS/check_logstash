@@ -306,7 +306,7 @@ class CheckLogstash
 
     [
       PerfData.report(result, "process.cpu.percent", nil, nil, 0, 100),
-      PerfData.report(result, "mem.heap_used_percent", warning_heap_percent, critical_heap_percent, 0, 100),
+      PerfData.report(result, "jvm.mem.heap_used_percent", warning_heap_percent, critical_heap_percent, 0, 100),
       PerfData.report(result, "jvm.threads.count", nil, nil, 0, nil),
       PerfData.report(result, "process.open_file_descriptors", warn_file_descriptors, crit_file_descriptors, 0, max_file_descriptors),
       #PerfData.report_counter(result, "pipeline.events.in", nil, nil, 0, nil),
@@ -348,8 +348,8 @@ class CheckLogstash
 
   HEAP_REPORT = "Heap usage at %.2f%% (%d out of %d bytes in use)"
   def heap_health(result)
-    percent_heap_used = result.get("mem.heap_used_percent")
-    heap_report = format(HEAP_REPORT, percent_heap_used, result.get("mem.heap_used_in_bytes"), result.get("mem.heap_max_in_bytes"))
+    percent_heap_used = result.get("jvm.mem.heap_used_percent")
+    heap_report = format(HEAP_REPORT, percent_heap_used, result.get("jvm.mem.heap_used_in_bytes"), result.get("jvm.mem.heap_max_in_bytes"))
 
     if critical_heap_percent && percent_heap_used > critical_heap_percent
       Critical.new(heap_report)
