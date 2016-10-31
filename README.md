@@ -19,6 +19,10 @@ While the plugin works with the first release of Logstash 5.0, there is still so
                                      The percentage relative to the heap size limit on which to be a warning result.
         --heap-usage-threshold-crit CRIT
                                      The percentage relative to the heap size limit on which to be a critical result.
+        --cpu-usage-threshold-warn WARN
+                                     The percentage of CPU usage on which to be a warning result.
+        --cpu-usage-threshold-crit CRIT
+                                     The percentage of CPU usage on which to be a critical result.
         --inflight-events-warn WARN  Threshold for inflight events to be a warning result. Use min:max for a range.
         --inflight-events-crit CRIT  Threshold for inflight events to be a critical result. Use min:max for a range.
     -h, --help                       Show this message
@@ -59,3 +63,23 @@ To set your thresholds for inflight events to a sensnible value use baselining. 
 ### Configuration check ###
 
 Logstash 5.0 can automatically reload changed configuration from disk. This plugin checks if the last reload succeeded or failed. Unfortunately the first release of Logstash 5.0 does not provide a way to show that it recovered from an invalid configuration. If you had an error, the plugin will still show that there is a problem with the configuration even when this is already fixed. There is already an issue with Logstash pending to fix this behaviour: https://github.com/elastic/logstash/issues/6149
+
+## Default values ##
+
+There are some default values defined in the plugin. Some values are merely put out as performance data and some are normally used for performance data but can be checked against thresholds.
+
+### Checks with defaults ###
+
+* `-H`: 127.0.0.1
+* `-p`: 9600
+* `--file-descriptor-threshold-warn` : 85
+* `--file-descriptor-threshold-warn` : 95
+* `--heap-usage-threshold-warn` : 70
+* `--heap-usage-threshold-warn` : 80
+
+### Optionally checked ###
+
+* `--cpu-usage-threshold-warn`
+* `--cpu-usage-threshold-crit`
+* `--inflight-events-warn`
+* `--inflight-events-crit`

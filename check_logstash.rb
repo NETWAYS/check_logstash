@@ -117,6 +117,8 @@ class CheckLogstash
         opts.on("--file-descriptor-threshold-crit CRIT", "The percentage relative to the process file descriptor limit on which to be a critical result.") { |v| check.critical_file_descriptor_percent = v.to_i }
         opts.on("--heap-usage-threshold-warn WARN", "The percentage relative to the heap size limit on which to be a warning result.") { |v| check.warning_heap_percent = v.to_i }
         opts.on("--heap-usage-threshold-crit CRIT", "The percentage relative to the heap size limit on which to be a critical result.") { |v| check.critical_heap_percent = v.to_i }
+        opts.on("--cpu-usage-threshold-warn WARN", "The percentage of CPU usage on which to be a warning result.") { |v| check.warning_cpu_percent = v.to_i }
+        opts.on("--cpu-usage-threshold-crit CRIT", "The percentage of CPU usage on which to be a critical result.") { |v| check.critical_cpu_percent = v.to_i }
         # the following 2 blocks split : seperated ranges into 2 values. If only one value is given it's used as maximum
         opts.on("--inflight-events-warn WARN", "Threshold for inflight events to be a warning result. Use min:max for a range.") do |v|
           options_error.call("--inflight-events-warn requires an argument") if v.nil?
@@ -249,6 +251,8 @@ class CheckLogstash
   DEFAULT_FILE_DESCRIPTOR_CRITICAL = 95
   DEFAULT_HEAP_WARNING = 70
   DEFAULT_HEAP_CRITICAL = 80
+  DEFAULT_CPU_WARNING = nil
+  DEFAULT_CPU_CRITICAL = nil
   DEFAULT_INFLIGHT_EVENTS_WARNING_MIN = nil
   DEFAULT_INFLIGHT_EVENTS_WARNING_MAX = nil
   DEFAULT_INFLIGHT_EVENTS_CRITICAL_MIN = nil
@@ -259,6 +263,8 @@ class CheckLogstash
   attr_accessor :critical_file_descriptor_percent
   attr_accessor :warning_heap_percent
   attr_accessor :critical_heap_percent
+  attr_accessor :warning_cpu_percent
+  attr_accessor :critical_cpu_percent
   attr_accessor :warning_inflight_events_min
   attr_accessor :warning_inflight_events_max
   attr_accessor :critical_inflight_events_min
@@ -272,6 +278,8 @@ class CheckLogstash
     self.critical_file_descriptor_percent = DEFAULT_FILE_DESCRIPTOR_CRITICAL
     self.warning_heap_percent = DEFAULT_HEAP_WARNING
     self.critical_heap_percent = DEFAULT_HEAP_CRITICAL
+    self.warning_cpu_percent = DEFAULT_CPU_CRITICAL
+    self.critical_cpu_percent = DEFAULT_CPU_CRITICAL
     self.warning_inflight_events_min = DEFAULT_INFLIGHT_EVENTS_WARNING_MIN
     self.warning_inflight_events_max = DEFAULT_INFLIGHT_EVENTS_WARNING_MAX
     self.critical_inflight_events_min = DEFAULT_INFLIGHT_EVENTS_CRITICAL_MIN
@@ -311,7 +319,7 @@ class CheckLogstash
     inflight_events = (result.get("pipeline.events.out") - result.get("pipeline.events.in")).to_i
 
     [
-      PerfData.report_percent(result, "process.cpu.percent", nil, nil, 0, 100),
+      PerfData.report_percent(result, "process.cpu.percent", warning_cpu_percent, critical_cpu_percent, 0, 100),
       PerfData.report_percent(result, "jvm.mem.heap_used_percent", warning_heap_percent, critical_heap_percent, 0, 100),
       PerfData.report(result, "jvm.threads.count", nil, nil, 0, nil),
       PerfData.report(result, "process.open_file_descriptors", warn_file_descriptors, crit_file_descriptors, 0, max_file_descriptors),
@@ -330,7 +338,8 @@ class CheckLogstash
       file_descriptor_health(result),
       heap_health(result),
       inflight_events_health(result),
-      config_reload_health(result)
+      config_reload_health(result),
+      cpu_usage_health(result),
     ]
   end
 
@@ -402,6 +411,19 @@ class CheckLogstash
       Critical.new(config_reload_errors_report)
     else
       OK.new(config_reload_errors_report)
+    end
+  end
+
+  CPU_REPORT = "CPU usage in percent: %d"
+  def cpu_usage_health(result)
+    cpu_usage_percent = (result.get("process.cpu.percent")).to_i
+    cpu_usage_percent_report = format(CPU_REPORT, cpu_usage_percent)
+    if critical_cpu_percent && cpu_usage_percent > critical_cpu_percent
+      Critical.new(cpu_usage_percent_report)
+    elsif warning_cpu_percent && cpu_usage_percent > warning_cpu_percent
+      Warning.new(cpu_usage_percent_report)
+    else
+      OK.new(cpu_usage_percent_report)
     end
   end
   
