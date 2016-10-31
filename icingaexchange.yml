@@ -43,3 +43,11 @@ releases:
         url: "file:///check_logstash.rb"
         description: "beta, working with Logstash 5.0 release"
         checksum: b34879f79bbcd20b7c08918d21417d77
+    name: 0.6 
+    description: "0.6 Release"
+    files: 
+      - 
+        name: check_logstash.rb 
+        url: "file:///check_logstash.rb"
+        description: "stable, working with first release of Logstash 5.0"
+        checksum: 6883b39f317eeb14d229be3a0bb85878

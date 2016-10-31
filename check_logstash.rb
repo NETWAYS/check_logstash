@@ -3,14 +3,16 @@
 # File : check_logstash
 # Author : Thomas Widhalm, Netways
 # E-Mail: thomas.widhalm@netways.de
-# Date : 01/07/2016
+# Date : 31/10/2016
 #
-# Version: 0.4.0
+# Version: 0.6.0
 #
 # This program is free software; you can redistribute it or modify
 # it under the terms of the GNU General Public License version 3.0
 #
 # Changelog:
+# 	- 0.6.0 first stable release, working with first Logstash 5.0 release
+# 	- 0.5.0 first beta, working with Logstash 5.0 release
 # 	- 0.4.0 add thresholds and performance data for inflight events
 #	- 0.3.0 change thresholds to adopt plugin syntax, change api calls for Logstash v5-alpha5
 # 	- 0.2.0 add heap and file descriptor thresholds
