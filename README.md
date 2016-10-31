@@ -1,7 +1,9 @@
 # check_logstash #
 A monitoring plugin for Icinga (2), Nagios, Shinken, Naemon, etc. to check the Logstash API (Logstash v.5+)
 
-This is still under heavy development and needs testing.
+While the plugin works with the first release of Logstash 5.0, there is still some work to be done and some tests to be made.
+
+**A word of warning** Be sure to read the configuration check part of this readme since there is a problem with this feature.
 
 ## Usage ##
 
@@ -53,3 +55,7 @@ or
 ## Finding viable thresholds ##
 
 To set your thresholds for inflight events to a sensnible value use baselining. Don't set thresholds from the beginning but let Graphite or other graphers create graphs for inflight events. Just add some percent to what Logstash usually processes and set this as threshold. Or use the `generator` plugin to put as many events through your Elastic stack as possible. Use some percent (e.g. 90%) from this maximum as a threshold. Keep in mind that changing your configuration might change the maximum inflight events.
+
+### Configuration check ###
+
+Logstash 5.0 can automatically reload changed configuration from disk. This plugin checks if the last reload succeeded or failed. Unfortunately the first release of Logstash 5.0 does not provide a way to show that it recovered from an invalid configuration. If you had an error, the plugin will still show that there is a problem with the configuration even when this is already fixed. There is already an issue with Logstash pending to fix this behaviour: https://github.com/elastic/logstash/issues/6149
