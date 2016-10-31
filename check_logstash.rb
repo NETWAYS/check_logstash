@@ -317,14 +317,18 @@ class CheckLogstash
     ].join(" ")
   end
 
+  # the reports are defined below, call them here
 
   def health(result)
     [ 
       file_descriptor_health(result),
       heap_health(result),
       inflight_events_health(result),
+      config_reload_health(result)
     ]
   end
+
+  # reports for various performance data including threshold checks
 
   FILE_DESCRIPTOR_REPORT = "Open file descriptors at %.2f%%. (%d out of %d file descriptors are open)"
   def file_descriptor_health(result)
@@ -378,6 +382,23 @@ class CheckLogstash
       OK.new(inflight_events_report)
     end
   end
+
+  # the following would be needed to output the whole errormessage
+  #CONFIG_RELOAD_REPORT = "Config reload errormessage: %s"
+  CONFIG_RELOAD_REPORT = "Config reload syntax check" 
+  def config_reload_health(result)
+    config_reload_errors = (result.get("pipeline.reloads.failures")).to_i
+    config_reload_error_message = (result.get("pipeline.reloads.last_error.message"))
+    config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
+    # the following would output the whole errormessage which is too long as output of a monitoring plugin
+    #config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
+    if config_reload_errors > 0
+      Critical.new(config_reload_errors_report)
+    else
+      OK.new(config_reload_errors_report)
+    end
+  end
+  
 end
 
 if __FILE__ == $0
