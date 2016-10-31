@@ -225,6 +225,12 @@ class CheckLogstash
       # the UOM (unit of measurement) of 'c' means a counter.
       format("%s=%sc;%s;%s;%s;%s", field, result.get(field), warning, critical, minimum, maximum)
     end
+
+    def report_percent(result, field, warning=nil, critical=nil, minimum=nil, maximum=nil)
+      #'label'=value[UOM];[warn];[crit];[min];[max]
+      # the UOM (unit of measurement) of '%' means percent
+      format("%s=%s%%;%s;%s;%s;%s", field, result.get(field), warning, critical, minimum, maximum)
+    end
   end
 
   module PerfData_derived
@@ -305,8 +311,8 @@ class CheckLogstash
     inflight_events = (result.get("pipeline.events.out") - result.get("pipeline.events.in")).to_i
 
     [
-      PerfData.report(result, "process.cpu.percent", nil, nil, 0, 100),
-      PerfData.report(result, "jvm.mem.heap_used_percent", warning_heap_percent, critical_heap_percent, 0, 100),
+      PerfData.report_percent(result, "process.cpu.percent", nil, nil, 0, 100),
+      PerfData.report_percent(result, "jvm.mem.heap_used_percent", warning_heap_percent, critical_heap_percent, 0, 100),
       PerfData.report(result, "jvm.threads.count", nil, nil, 0, nil),
       PerfData.report(result, "process.open_file_descriptors", warn_file_descriptors, crit_file_descriptors, 0, max_file_descriptors),
       #PerfData.report_counter(result, "pipeline.events.in", nil, nil, 0, nil),
