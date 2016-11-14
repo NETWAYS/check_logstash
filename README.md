@@ -83,3 +83,9 @@ There are some default values defined in the plugin. Some values are merely put 
 * `--cpu-usage-threshold-crit`
 * `--inflight-events-warn`
 * `--inflight-events-crit`
+
+## Building ##
+
+While `check_logstash` is the finished plugin you can use, you might want to change something and rebuild the script.
+
+Simply issue the `rake` command (if you have Rake installed) and it will run tests (and rubocop when all cops are pleased) and create the script from the library files. *Don't change the `check_logstash` file since it will be overwritten by Rake, change the files in `lib/` instead.
