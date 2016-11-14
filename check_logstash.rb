@@ -14,7 +14,8 @@
 # 	- 0.6.0 first stable release, working with first Logstash 5.0 release
 # 	- 0.5.0 first beta, working with Logstash 5.0 release
 # 	- 0.4.0 add thresholds and performance data for inflight events
-#	- 0.3.0 change thresholds to adopt plugin syntax, change api calls for Logstash v5-alpha5
+#	- 0.3.0 change thresholds to adopt plugin syntax, change api calls for
+#	  Logstash v5-alpha5
 # 	- 0.2.0 add heap and file descriptor thresholds
 # 	- 0.1.0 initial, untested prototype
 #
@@ -27,11 +28,11 @@
 # 	this so much better. I hope I can keep up to the expectations with
 # 	the next versions.
 
-require "rubygems"
-require "json"
-require "net/http"
-require "uri"
-require "optparse"
+require 'rubygems'
+require 'json'
+require 'net/http'
+require 'uri'
+require 'optparse'
 
 class CheckLogstash
   class Status
@@ -42,7 +43,7 @@ class CheckLogstash
 
     def label
       # get the class name like 'CheckLogstash::Critical' as 'CRITICAL'
-      self.class.name.upcase.split("::").last
+      self.class.name.upcase.split('::').last
     end
 
     def to_s
@@ -69,7 +70,9 @@ class CheckLogstash
   end
 
   module CLI
+
     module_function
+
     def run(args)
       check = CheckLogstash.new
       parse(check, args)
@@ -91,9 +94,9 @@ class CheckLogstash
         elsif health.any? { |h| h.is_a?(Warning) }
           "WARNING - Logstash may not be healthy - #{health.find { |h| h.is_a?(Warning) }}"
         end
-      else
-        "OK - Logstash looking healthy."
-      end
+        else
+          'OK - Logstash looking healthy.'
+        end
 
       puts "#{status} | #{check.performance_data(result)}\n"
       puts health.sort_by(&:to_i).reverse.join("\n")
@@ -102,10 +105,10 @@ class CheckLogstash
     end
 
     def parse(check, args)
-      args  = [ '-h' ] if args.empty?
+      args = ['-h'] if args.empty?
 
       OptionParser.new do |opts|
-        opts.banner = "Usage: #{$0} [options]"
+        opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
 
         options_error = proc do |message|
           $stderr.puts message
@@ -115,43 +118,43 @@ class CheckLogstash
 
         opts.on('-H', '--hostname HOST', 'Logstash host') { |v| check.host = v }
         opts.on('-p', '--hostname PORT', 'Logstash API port') { |v| check.port = v.to_i }
-        opts.on("--file-descriptor-threshold-warn WARN", "The percentage relative to the process file descriptor limit on which to be a warning result.") { |v| check.warning_file_descriptor_percent = v.to_i }
-        opts.on("--file-descriptor-threshold-crit CRIT", "The percentage relative to the process file descriptor limit on which to be a critical result.") { |v| check.critical_file_descriptor_percent = v.to_i }
-        opts.on("--heap-usage-threshold-warn WARN", "The percentage relative to the heap size limit on which to be a warning result.") { |v| check.warning_heap_percent = v.to_i }
-        opts.on("--heap-usage-threshold-crit CRIT", "The percentage relative to the heap size limit on which to be a critical result.") { |v| check.critical_heap_percent = v.to_i }
-        opts.on("--cpu-usage-threshold-warn WARN", "The percentage of CPU usage on which to be a warning result.") { |v| check.warning_cpu_percent = v.to_i }
-        opts.on("--cpu-usage-threshold-crit CRIT", "The percentage of CPU usage on which to be a critical result.") { |v| check.critical_cpu_percent = v.to_i }
+        opts.on('--file-descriptor-threshold-warn WARN', 'The percentage relative to the process file descriptor limit on which to be a warning result.') { |v| check.warning_file_descriptor_percent = v.to_i }
+        opts.on('--file-descriptor-threshold-crit CRIT', 'The percentage relative to the process file descriptor limit on which to be a critical result.') { |v| check.critical_file_descriptor_percent = v.to_i }
+        opts.on('--heap-usage-threshold-warn WARN', 'The percentage relative to the heap size limit on which to be a warning result.') { |v| check.warning_heap_percent = v.to_i }
+        opts.on('--heap-usage-threshold-crit CRIT', 'The percentage relative to the heap size limit on which to be a critical result.') { |v| check.critical_heap_percent = v.to_i }
+        opts.on('--cpu-usage-threshold-warn WARN', 'The percentage of CPU usage on which to be a warning result.') { |v| check.warning_cpu_percent = v.to_i }
+        opts.on('--cpu-usage-threshold-crit CRIT', 'The percentage of CPU usage on which to be a critical result.') { |v| check.critical_cpu_percent = v.to_i }
         # the following 2 blocks split : seperated ranges into 2 values. If only one value is given it's used as maximum
-        opts.on("--inflight-events-warn WARN", "Threshold for inflight events to be a warning result. Use min:max for a range.") do |v|
-          options_error.call("--inflight-events-warn requires an argument") if v.nil?
+        opts.on('--inflight-events-warn WARN', 'Threshold for inflight events to be a warning result. Use min:max for a range.') do |v|
+          options_error.call('--inflight-events-warn requires an argument') if v.nil?
 
-          values = v.split(":")
-          options_error.call("--inflight-events-warn has invalid argument #{v}") if values.count == 0 || values.count > 2
+          values = v.split(':')
+          options_error.call("--inflight-events-warn has invalid argument #{v}") if values.count.zero? || values.count > 2
 
           begin
             if values.count == 1
               check.warning_inflight_events_min = -1
               check.warning_inflight_events_max = values[0].to_i
             else
-              check.warning_inflight_events_min =  values[0].to_i
+              check.warning_inflight_events_min = values[0].to_i
               check.warning_inflight_events_max = values[1].to_i
             end
           rescue ArgumentError => e
             options_error.call("--inflight-events-warn has invalid argument. #{e.message}")
           end
         end
-        opts.on("--inflight-events-crit CRIT", "Threshold for inflight events to be a critical result. Use min:max for a range.") do |v|
-          options_error.call("--inflight-events-critical requires an argument") if v.nil?
+        opts.on('--inflight-events-crit CRIT', 'Threshold for inflight events to be a critical result. Use min:max for a range.') do |v|
+          options_error.call('--inflight-events-critical requires an argument') if v.nil?
 
-          values = v.split(":")
-          options_error.call("--inflight-events-critical has invalid argument #{v}") if values.count == 0 || values.count > 2
+          values = v.split(':')
+          options_error.call("--inflight-events-critical has invalid argument #{v}") if values.count.zero? || values.count > 2
 
           begin
             if values.count == 1
               check.critical_inflight_events_min = -1
               check.critical_inflight_events_max = values[0].to_i
             else
-              check.critical_inflight_events_min =  values[0].to_i
+              check.critical_inflight_events_min = values[0].to_i
               check.critical_inflight_events_max = values[1].to_i
             end
           rescue ArgumentError => e
@@ -159,7 +162,7 @@ class CheckLogstash
           end
         end
 
-        opts.on_tail("-h", "--help", "Show this message") do
+        opts.on_tail('-h', '--help', 'Show this message') do
           puts opts
           exit
         end
@@ -184,7 +187,7 @@ class CheckLogstash
     end
 
     def self.get(field, data)
-      first, remaining = field.split(".", 2)
+      first, remaining = field.split('.', 2)
       value = data.fetch(first)
       if value.is_a?(Hash) && remaining
         get(remaining, value)
@@ -197,14 +200,16 @@ class CheckLogstash
   end
 
   module Fetcher
+
     module_function
+
     def fetch(host, port)
       uri = URI.parse("http://#{host}:#{port}/_node/stats")
       http = Net::HTTP.new(uri.host, uri.port)
       request = Net::HTTP::Get.new(uri.request_uri)
       response = http.request(request)
 
-      critical("Got HTTP response #{response.code}") if response.code != "200"
+      critical("Got HTTP response #{response.code}") if response.code != '200'
 
       result = begin
         JSON.parse(response.body)
@@ -218,36 +223,40 @@ class CheckLogstash
   module PerfData
     # return perfdata formatted string
     # use for values taken directly from API
+
     module_function
-    def report(result, field, warning=nil, critical=nil, minimum=nil, maximum=nil)
-      #'label'=value[UOM];[warn];[crit];[min];[max]
-      format("%s=%s;%s;%s;%s;%s", field, result.get(field), warning, critical, minimum, maximum)
+
+    def report(result, field, warning = nil, critical = nil, minimum = nil, maximum = nil)
+      # 'label'=value[UOM];[warn];[crit];[min];[max]
+      format('%s=%s;%s;%s;%s;%s', field, result.get(field), warning, critical, minimum, maximum)
     end
 
-    def report_counter(result, field, warning=nil, critical=nil, minimum=nil, maximum=nil)
-      #'label'=value[UOM];[warn];[crit];[min];[max]
+    def report_counter(result, field, warning = nil, critical = nil, minimum = nil, maximum = nil)
+      # 'label'=value[UOM];[warn];[crit];[min];[max]
       # the UOM (unit of measurement) of 'c' means a counter.
-      format("%s=%sc;%s;%s;%s;%s", field, result.get(field), warning, critical, minimum, maximum)
+      format('%s=%sc;%s;%s;%s;%s', field, result.get(field), warning, critical, minimum, maximum)
     end
 
-    def report_percent(result, field, warning=nil, critical=nil, minimum=nil, maximum=nil)
-      #'label'=value[UOM];[warn];[crit];[min];[max]
+    def report_percent(result, field, warning = nil, critical = nil, minimum = nil, maximum = nil)
+      # 'label'=value[UOM];[warn];[crit];[min];[max]
       # the UOM (unit of measurement) of '%' means percent
-      format("%s=%s%%;%s;%s;%s;%s", field, result.get(field), warning, critical, minimum, maximum)
+      format('%s=%s%%;%s;%s;%s;%s', field, result.get(field), warning, critical, minimum, maximum)
     end
   end
 
   module PerfData_derived
     # return perfdata formatted string
     # use for derived / computed values
+
     module_function
-    def report(label, value, warning=nil, critical=nil, minimum=nil, maximum=nil)
-      format("%s=%s;%s;%s;%s;%s", label, value, warning, critical, minimum, maximum)
+
+    def report(label, value, warning = nil, critical = nil, minimum = nil, maximum = nil)
+      format('%s=%s;%s;%s;%s;%s', label, value, warning, critical, minimum, maximum)
     end
   end
 
   DEFAULT_PORT = 9600
-  DEFAULT_HOST = "127.0.0.1"
+  DEFAULT_HOST = '127.0.0.1'
 
   DEFAULT_FILE_DESCRIPTOR_WARNING = 85
   DEFAULT_FILE_DESCRIPTOR_CRITICAL = 95
@@ -313,48 +322,48 @@ class CheckLogstash
   end
 
   def performance_data(result)
-    max_file_descriptors = result.get("process.max_file_descriptors")
-    open_file_descriptors = result.get("process.open_file_descriptors")
-    percent_file_descriptors = (open_file_descriptors.to_f / max_file_descriptors)*100
-    warn_file_descriptors = (max_file_descriptors / 100)*warning_file_descriptor_percent
-    crit_file_descriptors = (max_file_descriptors / 100)*critical_file_descriptor_percent
-    inflight_events = (result.get("pipeline.events.out") - result.get("pipeline.events.in")).to_i
+    max_file_descriptors = result.get('process.max_file_descriptors')
+    open_file_descriptors = result.get('process.open_file_descriptors')
+    percent_file_descriptors = (open_file_descriptors.to_f / max_file_descriptors) * 100
+    warn_file_descriptors = (max_file_descriptors / 100) * warning_file_descriptor_percent
+    crit_file_descriptors = (max_file_descriptors / 100) * critical_file_descriptor_percent
+    inflight_events = (result.get('pipeline.events.out') - result.get('pipeline.events.in')).to_i
 
     [
-      PerfData.report_percent(result, "process.cpu.percent", warning_cpu_percent, critical_cpu_percent, 0, 100),
-      PerfData.report_percent(result, "jvm.mem.heap_used_percent", warning_heap_percent, critical_heap_percent, 0, 100),
-      PerfData.report(result, "jvm.threads.count", nil, nil, 0, nil),
-      PerfData.report(result, "process.open_file_descriptors", warn_file_descriptors, crit_file_descriptors, 0, max_file_descriptors),
-      #PerfData.report_counter(result, "pipeline.events.in", nil, nil, 0, nil),
-      #PerfData.report_counter(result, "pipeline.events.filtered", nil, nil, 0, nil),
-      PerfData.report_counter(result, "pipeline.events.out", nil, nil, 0, nil),
-      PerfData_derived.report("inflight_events", inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil)
-      #inflight_perfdata
-    ].join(" ")
+      PerfData.report_percent(result, 'process.cpu.percent', warning_cpu_percent, critical_cpu_percent, 0, 100),
+      PerfData.report_percent(result, 'jvm.mem.heap_used_percent', warning_heap_percent, critical_heap_percent, 0, 100),
+      PerfData.report(result, 'jvm.threads.count', nil, nil, 0, nil),
+      PerfData.report(result, 'process.open_file_descriptors', warn_file_descriptors, crit_file_descriptors, 0, max_file_descriptors),
+      # PerfData.report_counter(result, "pipeline.events.in", nil, nil, 0, nil),
+      # PerfData.report_counter(result, "pipeline.events.filtered", nil, nil, 0, nil),
+      PerfData.report_counter(result, 'pipeline.events.out', nil, nil, 0, nil),
+      PerfData_derived.report('inflight_events', inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil)
+      # inflight_perfdata
+    ].join(' ')
   end
 
   # the reports are defined below, call them here
 
   def health(result)
-    [ 
+    [
       file_descriptor_health(result),
       heap_health(result),
       inflight_events_health(result),
       config_reload_health(result),
-      cpu_usage_health(result),
+      cpu_usage_health(result)
     ]
   end
 
   # reports for various performance data including threshold checks
 
-  FILE_DESCRIPTOR_REPORT = "Open file descriptors at %.2f%%. (%d out of %d file descriptors are open)"
+  FILE_DESCRIPTOR_REPORT = 'Open file descriptors at %.2f%%. (%d out of %d file descriptors are open)'
   def file_descriptor_health(result)
-    max_file_descriptors = result.get("process.max_file_descriptors")
-    open_file_descriptors = result.get("process.open_file_descriptors")
+    max_file_descriptors = result.get('process.max_file_descriptors')
+    open_file_descriptors = result.get('process.open_file_descriptors')
 
     # For now, we have to compute the file descriptor usage percent until
     # Logstash stats api delivers the percentage directly.
-    percent_file_descriptors = (open_file_descriptors.to_f / max_file_descriptors)*100.0
+    percent_file_descriptors = (open_file_descriptors.to_f / max_file_descriptors) * 100.0
 
     file_descriptor_report = format(FILE_DESCRIPTOR_REPORT, percent_file_descriptors, open_file_descriptors, max_file_descriptors)
 
@@ -367,10 +376,10 @@ class CheckLogstash
     end
   end
 
-  HEAP_REPORT = "Heap usage at %.2f%% (%d out of %d bytes in use)"
+  HEAP_REPORT = 'Heap usage at %.2f%% (%d out of %d bytes in use)'
   def heap_health(result)
-    percent_heap_used = result.get("jvm.mem.heap_used_percent")
-    heap_report = format(HEAP_REPORT, percent_heap_used, result.get("jvm.mem.heap_used_in_bytes"), result.get("jvm.mem.heap_max_in_bytes"))
+    percent_heap_used = result.get('jvm.mem.heap_used_percent')
+    heap_report = format(HEAP_REPORT, percent_heap_used, result.get('jvm.mem.heap_used_in_bytes'), result.get('jvm.mem.heap_max_in_bytes'))
 
     if critical_heap_percent && percent_heap_used > critical_heap_percent
       Critical.new(heap_report)
@@ -381,11 +390,11 @@ class CheckLogstash
     end
   end
 
-  INFLIGHT_EVENTS_REPORT = "Inflight events: %d"
+  INFLIGHT_EVENTS_REPORT = 'Inflight events: %d'
   def inflight_events_health(result)
-  # check if inflight events are outside of threshold
-  # find a way to reuse the already computed inflight events
-    inflight_events = (result.get("pipeline.events.out") - result.get("pipeline.events.in")).to_i
+    # check if inflight events are outside of threshold
+    # find a way to reuse the already computed inflight events
+    inflight_events = (result.get('pipeline.events.out') - result.get('pipeline.events.in')).to_i
     inflight_events_report = format(INFLIGHT_EVENTS_REPORT, inflight_events)
     if critical_inflight_events_max && critical_inflight_events_max < inflight_events
       Critical.new(inflight_events_report)
@@ -401,14 +410,14 @@ class CheckLogstash
   end
 
   # the following would be needed to output the whole errormessage
-  #CONFIG_RELOAD_REPORT = "Config reload errormessage: %s"
-  CONFIG_RELOAD_REPORT = "Config reload syntax check" 
+  # CONFIG_RELOAD_REPORT = "Config reload errormessage: %s"
+  CONFIG_RELOAD_REPORT = 'Config reload syntax check' 
   def config_reload_health(result)
-    config_reload_errors = (result.get("pipeline.reloads.failures")).to_i
-    config_reload_error_message = (result.get("pipeline.reloads.last_error.message"))
+    config_reload_errors = (result.get('pipeline.reloads.failures')).to_i
+    config_reload_error_message = (result.get('pipeline.reloads.last_error.message'))
     config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
     # the following would output the whole errormessage which is too long as output of a monitoring plugin
-    #config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
+    # config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
     if config_reload_errors > 0
       Critical.new(config_reload_errors_report)
     else
@@ -416,9 +425,9 @@ class CheckLogstash
     end
   end
 
-  CPU_REPORT = "CPU usage in percent: %d"
+  CPU_REPORT = 'CPU usage in percent: %d'
   def cpu_usage_health(result)
-    cpu_usage_percent = (result.get("process.cpu.percent")).to_i
+    cpu_usage_percent = (result.get('process.cpu.percent')).to_i
     cpu_usage_percent_report = format(CPU_REPORT, cpu_usage_percent)
     if critical_cpu_percent && cpu_usage_percent > critical_cpu_percent
       Critical.new(cpu_usage_percent_report)
@@ -428,9 +437,9 @@ class CheckLogstash
       OK.new(cpu_usage_percent_report)
     end
   end
-  
+ 
 end
 
-if __FILE__ == $0
+if __FILE__ == $PROGRAM_NAME
   exit(CheckLogstash::CLI.run(ARGV))
 end
