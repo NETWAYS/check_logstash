@@ -5,12 +5,13 @@
 # E-Mail: thomas.widhalm@netways.de
 # Date : 31/10/2016
 #
-# Version: 0.6.0
+# Version: 0.6.1-1
 #
 # This program is free software; you can redistribute it or modify
 # it under the terms of the GNU General Public License version 3.0
 #
 # Changelog:
+#       - 0.6.1 rewrite for better coding standards and rspec tests
 # 	- 0.6.0 first stable release, working with first Logstash 5.0 release
 # 	- 0.5.0 first beta, working with Logstash 5.0 release
 # 	- 0.4.0 add thresholds and performance data for inflight events
@@ -255,6 +256,7 @@ class CheckLogstash
     end
   end
 
+  Version = 0.6.1-1
   DEFAULT_PORT = 9600
   DEFAULT_HOST = '127.0.0.1'
 
