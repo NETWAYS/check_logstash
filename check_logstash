@@ -96,7 +96,7 @@ class CheckLogstash
           "WARNING - Logstash may not be healthy - #{health.find { |h| h.is_a?(Warning) }}"
         end
         else
-          'OK - Logstash looking healthy.'
+          'OK - Logstash seems to be doing fine.'
         end
 
       puts "#{status} | #{check.performance_data(result)}\n"
