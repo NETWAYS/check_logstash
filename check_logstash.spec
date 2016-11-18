@@ -18,7 +18,7 @@ License: GPL 3+
 Source0:  https://github.com/widhalmt/%{name}/archive/%{commit0}.tar.gz#/%{name}-%{shortcommit0}.tar.gz
 # use the following for a specific tag
 # Source0:  https://github.com/widhalmt/%{name}/archive/v%{version}.tar.gz#/%{name}-%{version}.tar.gz
-BuildRequires: rubygem-rake,rubygem-rspec
+#BuildRequires: rubygem-rake,rubygem-rspec
 Requires: ruby
 Provides: check_logstash
 
@@ -36,7 +36,7 @@ check_logstash - a monitoring plugin to connect to the Logstash API
 # %%autosetup -n %{name}-%{version}
 
 %build
-rake
+# rake
 
 %install
 mkdir -p $RPM_BUILD_ROOT/usr/lib64/nagios/plugins
