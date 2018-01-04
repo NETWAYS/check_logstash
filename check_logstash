@@ -396,7 +396,7 @@ class CheckLogstash
   def inflight_events_health(result)
     # check if inflight events are outside of threshold
     # find a way to reuse the already computed inflight events
-    inflight_events = (result.get('pipeline.events.out') - result.get('pipeline.events.in')).to_i
+    inflight_events = (result.get('pipeline.events.in') - result.get('pipeline.events.out')).to_i
     inflight_events_report = format(INFLIGHT_EVENTS_REPORT, inflight_events)
     if critical_inflight_events_max && critical_inflight_events_max < inflight_events
       Critical.new(inflight_events_report)
