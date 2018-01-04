@@ -329,7 +329,7 @@ class CheckLogstash
     percent_file_descriptors = (open_file_descriptors.to_f / max_file_descriptors) * 100
     warn_file_descriptors = (max_file_descriptors / 100) * warning_file_descriptor_percent
     crit_file_descriptors = (max_file_descriptors / 100) * critical_file_descriptor_percent
-    inflight_events = (result.get('pipeline.events.out') - result.get('pipeline.events.in')).to_i
+    inflight_events = (result.get('pipeline.events.in')- result.get('pipeline.events.out')).to_i
 
     [
       PerfData.report_percent(result, 'process.cpu.percent', warning_cpu_percent, critical_cpu_percent, 0, 100),
