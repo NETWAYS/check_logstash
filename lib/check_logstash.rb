@@ -329,7 +329,7 @@ class CheckLogstash
     percent_file_descriptors = (open_file_descriptors.to_f / max_file_descriptors) * 100
     warn_file_descriptors = (max_file_descriptors / 100) * warning_file_descriptor_percent
     crit_file_descriptors = (max_file_descriptors / 100) * critical_file_descriptor_percent
-    inflight_events = (result.get('pipeline.events.out') - result.get('pipeline.events.in')).to_i
+    #TODO inflight_events = (result.get('pipeline.events.out') - result.get('pipeline.events.in')).to_i
 
     [
       PerfData.report_percent(result, 'process.cpu.percent', warning_cpu_percent, critical_cpu_percent, 0, 100),
@@ -338,8 +338,8 @@ class CheckLogstash
       PerfData.report(result, 'process.open_file_descriptors', warn_file_descriptors, crit_file_descriptors, 0, max_file_descriptors),
       # PerfData.report_counter(result, "pipeline.events.in", nil, nil, 0, nil),
       # PerfData.report_counter(result, "pipeline.events.filtered", nil, nil, 0, nil),
-      PerfData.report_counter(result, 'pipeline.events.out', nil, nil, 0, nil),
-      PerfData_derived.report('inflight_events', inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil)
+      #TODO PerfData.report_counter(result, 'pipeline.events.out', nil, nil, 0, nil),
+      #TODO PerfData_derived.report('inflight_events', inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil)
       # inflight_perfdata
     ].join(' ')
   end
@@ -394,20 +394,57 @@ class CheckLogstash
 
   INFLIGHT_EVENTS_REPORT = 'Inflight events: %d'
   def inflight_events_health(result)
-    # check if inflight events are outside of threshold
-    # find a way to reuse the already computed inflight events
-    inflight_events = (result.get('pipeline.events.out') - result.get('pipeline.events.in')).to_i
-    inflight_events_report = format(INFLIGHT_EVENTS_REPORT, inflight_events)
-    if critical_inflight_events_max && critical_inflight_events_max < inflight_events
-      Critical.new(inflight_events_report)
-    elsif critical_inflight_events_min && critical_inflight_events_min > inflight_events
-      Critical.new(inflight_events_report)
-    elsif warning_inflight_events_max && warning_inflight_events_max < inflight_events
-      Warning.new(inflight_events_report)
-    elsif warning_inflight_events_min && warning_inflight_events_min > inflight_events
-      Warning.new(inflight_events_report)
+    # Since version 6.0.0 it's possible to define multiple pipelines and give them a name.
+    # This goes over all pipelines and compiles all events into one string.
+    if Gem::Version.new(result.get('version')) >= Gem::Version.new('6.0.0') then
+      inflight_events_report = 'Inflight events:'
+
+      warn_counter = 0
+      critical_counter = 0
+
+      for named_pipeline in result.get('pipelines') do
+        events_in = result.get('pipelines.' + named_pipeline[0] + '.events.in').to_i
+        events_out = result.get('pipelines.' + named_pipeline[0] + '.events.out').to_i
+
+        inflight_events = events_out - events_in
+        inflight_events_report = inflight_events_report + " " + named_pipeline[0] + ": " + inflight_events.to_s + ";"
+
+        if critical_inflight_events_max && critical_inflight_events_max < inflight_events
+          critical_counter += 1
+        elsif critical_inflight_events_min && critical_inflight_events_min > inflight_events
+          critical_counter += 1
+        elsif warning_inflight_events_max && warning_inflight_events_max < inflight_events
+          warn_counter += 1
+        elsif warning_inflight_events_min && warning_inflight_events_min > inflight_events
+          warn_counter += 1
+        end
+      end
+      # If any of the pipelines is above the configured values we throw the highest common alert.
+      # E.g. if pipeline1 is OK, but pipeline2 is CRIT the result will be CRIT.
+      if critical_counter > 0 then
+        Critical.new(inflight_events_report)
+      elsif warn_counter > 0 then
+        Warning.new(infligh_events_report)
+      else
+        OK.new(inflight_events_report)
+      end
+    # For versions older 6.0.0 we use the old method (unchanged)
     else
-      OK.new(inflight_events_report)
+      # check if inflight events are outside of threshold
+      # find a way to reuse the already computed inflight events
+      inflight_events = (result.get('pipeline.events.out') - result.get('pipeline.events.in')).to_i
+      inflight_events_report = format(INFLIGHT_EVENTS_REPORT, inflight_events)
+      if critical_inflight_events_max && critical_inflight_events_max < inflight_events
+        Critical.new(inflight_events_report)
+      elsif critical_inflight_events_min && critical_inflight_events_min > inflight_events
+        Critical.new(inflight_events_report)
+      elsif warning_inflight_events_max && warning_inflight_events_max < inflight_events
+        Warning.new(inflight_events_report)
+      elsif warning_inflight_events_min && warning_inflight_events_min > inflight_events
+        Warning.new(inflight_events_report)
+      else
+        OK.new(inflight_events_report)
+      end
     end
   end
 
@@ -415,15 +452,34 @@ class CheckLogstash
   # CONFIG_RELOAD_REPORT = "Config reload errormessage: %s"
   CONFIG_RELOAD_REPORT = 'Config reload syntax check' 
   def config_reload_health(result)
-    config_reload_errors = (result.get('pipeline.reloads.failures')).to_i
-    config_reload_error_message = (result.get('pipeline.reloads.last_error.message'))
-    config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
-    # the following would output the whole errormessage which is too long as output of a monitoring plugin
-    # config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
-    if config_reload_errors > 0
-      Critical.new(config_reload_errors_report)
+    # Same as above: since version 6.0.0 we can have multiple pipelines.
+    if Gem::Version.new(result.get('version')) >= Gem::Version.new('6.0.0') then
+      config_reload_errors_report = 'Config reload syntax check:'
+      error_counter = 0
+
+      for named_pipeline in result.get('pipelines') do
+        error_counter += result.get('pipelines.' + named_pipeline[0] + '.reloads.failures').to_i
+
+        config_reload_error_message = result.get('pipelines.' + named_pipeline[0] + '.reloads.last_error.message').to_s.strip
+        config_reload_errors_report = config_reload_errors_report + " " + named_pipeline[0] + ": " + (config_reload_error_message.empty? ? "OK" : config_reload_error_meesage) + ";"
+      end
+
+      if error_counter > 0
+        Critical.new(config_reload_errors_report)
+      else
+        OK.new(config_reload_errors_report)
+      end
     else
-      OK.new(config_reload_errors_report)
+      config_reload_errors = (result.get('pipeline.reloads.failures')).to_i
+      config_reload_error_message = (result.get('pipeline.reloads.last_error.message'))
+      config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
+      # the following would output the whole errormessage which is too long as output of a monitoring plugin
+      # config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
+      if config_reload_errors > 0
+        Critical.new(config_reload_errors_report)
+      else
+        OK.new(config_reload_errors_report)
+      end
     end
   end
 
