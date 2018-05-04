@@ -329,19 +329,35 @@ class CheckLogstash
     percent_file_descriptors = (open_file_descriptors.to_f / max_file_descriptors) * 100
     warn_file_descriptors = (max_file_descriptors / 100) * warning_file_descriptor_percent
     crit_file_descriptors = (max_file_descriptors / 100) * critical_file_descriptor_percent
-    #TODO inflight_events = (result.get('pipeline.events.out') - result.get('pipeline.events.in')).to_i
 
-    [
+    common = [
       PerfData.report_percent(result, 'process.cpu.percent', warning_cpu_percent, critical_cpu_percent, 0, 100),
       PerfData.report_percent(result, 'jvm.mem.heap_used_percent', warning_heap_percent, critical_heap_percent, 0, 100),
       PerfData.report(result, 'jvm.threads.count', nil, nil, 0, nil),
       PerfData.report(result, 'process.open_file_descriptors', warn_file_descriptors, crit_file_descriptors, 0, max_file_descriptors),
       # PerfData.report_counter(result, "pipeline.events.in", nil, nil, 0, nil),
       # PerfData.report_counter(result, "pipeline.events.filtered", nil, nil, 0, nil),
-      #TODO PerfData.report_counter(result, 'pipeline.events.out', nil, nil, 0, nil),
-      #TODO PerfData_derived.report('inflight_events', inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil)
-      # inflight_perfdata
-    ].join(' ')
+    ]
+
+    # Inflight events per pipeline, since Logstash 6.0.0
+    inflight_arr = []
+    if Gem::Version.new(result.get('version')) >= Gem::Version.new('6.0.0')
+      for named_pipeline in result.get('pipelines') do
+        events_in = result.get('pipelines.' + named_pipeline[0] + '.events.in').to_i
+        events_out = result.get('pipelines.' + named_pipeline[0] + '.events.out').to_i
+
+        inflight_events = events_out - events_in
+        inflight_arr.push(PerfData.report_counter(result, 'pipelines.' + named_pipeline[0] + '.events.out', nil, nil, 0, nil))
+        inflight_arr.push(PerfData_derived.report('inflight_events_' + named_pipeline[0], inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil))
+      end
+    else
+      inflight_events = (result.get('pipeline.events.out') - result.get('pipeline.events.in')).to_i
+      inflight_arr.push(PerfData.report_counter(result, 'pipeline.events.out', nil, nil, 0, nil))
+      inflight_arr.push(PerfData_derived.report('inflight_events', inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil))
+    end
+
+    perfdata = common + inflight_arr
+    perfdata.join(' ')
   end
 
   # the reports are defined below, call them here
@@ -396,7 +412,7 @@ class CheckLogstash
   def inflight_events_health(result)
     # Since version 6.0.0 it's possible to define multiple pipelines and give them a name.
     # This goes over all pipelines and compiles all events into one string.
-    if Gem::Version.new(result.get('version')) >= Gem::Version.new('6.0.0') then
+    if Gem::Version.new(result.get('version')) >= Gem::Version.new('6.0.0')
       inflight_events_report = 'Inflight events:'
 
       warn_counter = 0
@@ -421,9 +437,9 @@ class CheckLogstash
       end
       # If any of the pipelines is above the configured values we throw the highest common alert.
       # E.g. if pipeline1 is OK, but pipeline2 is CRIT the result will be CRIT.
-      if critical_counter > 0 then
+      if critical_counter > 0
         Critical.new(inflight_events_report)
-      elsif warn_counter > 0 then
+      elsif warn_counter > 0
         Warning.new(infligh_events_report)
       else
         OK.new(inflight_events_report)
@@ -453,7 +469,7 @@ class CheckLogstash
   CONFIG_RELOAD_REPORT = 'Config reload syntax check' 
   def config_reload_health(result)
     # Same as above: since version 6.0.0 we can have multiple pipelines.
-    if Gem::Version.new(result.get('version')) >= Gem::Version.new('6.0.0') then
+    if Gem::Version.new(result.get('version')) >= Gem::Version.new('6.0.0')
       config_reload_errors_report = 'Config reload syntax check:'
       error_counter = 0
 
