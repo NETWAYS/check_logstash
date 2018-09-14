@@ -3,14 +3,15 @@
 # File : check_logstash
 # Author : Thomas Widhalm, Netways
 # E-Mail: thomas.widhalm@netways.de
-# Date : 31/10/2016
+# Date : 14/09/2018
 #
-# Version: 0.6.1-1
+# Version: 0.7.0-1
 #
 # This program is free software; you can redistribute it or modify
 # it under the terms of the GNU General Public License version 3.0
 #
 # Changelog:
+#       - 0.6.2 update for multipipeline output
 #       - 0.6.1 rewrite for better coding standards and rspec tests
 # 	- 0.6.0 first stable release, working with first Logstash 5.0 release
 # 	- 0.5.0 first beta, working with Logstash 5.0 release
@@ -28,6 +29,9 @@
 # 	request to replace almost all of my code for version 0.2.0 and made
 # 	this so much better. I hope I can keep up to the expectations with
 # 	the next versions.
+#
+# 	Thank you very much to GitHub user rlueckl for helping out with
+# 	getting it to work with Logstash 5 and 6
 
 require 'rubygems'
 require 'json'
