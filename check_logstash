@@ -38,6 +38,7 @@ require 'json'
 require 'net/http'
 require 'uri'
 require 'optparse'
+require 'time'
 
 class CheckLogstash
   class Status
@@ -493,10 +494,18 @@ class CheckLogstash
       config_reload_errors = (result.get('pipeline.reloads.failures')).to_i
       config_reload_error_message = (result.get('pipeline.reloads.last_error.message'))
       config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
+      config_reload_last_success_timestamp = DateTime.parse(result.get('pipeline.reloads.last_success_timestamp'))
+      #puts 'last_success_timestamp='+config_reload_last_success_timestamp.inspect
+      config_reload_last_failure_timestamp = DateTime.parse(result.get('pipeline.reloads.last_failure_timestamp'))
+      #puts 'last_failure_timestamp='+config_reload_last_failure_timestamp.inspect
       # the following would output the whole errormessage which is too long as output of a monitoring plugin
       # config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
-      if config_reload_errors > 0
-        Critical.new(config_reload_errors_report)
+      if config_reload_last_success_timestamp < config_reload_last_failure_timestamp
+        if config_reload_errors > 0
+          Critical.new(config_reload_errors_report)
+        else
+          OK.new(config_reload_errors_report)
+        end
       else
         OK.new(config_reload_errors_report)
       end
