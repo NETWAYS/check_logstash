@@ -5,21 +5,22 @@
 # E-Mail: thomas.widhalm@netways.de
 # Date : 14/09/2018
 #
-# Version: 0.7.0-1
+# Version: 0.7.1-0
 #
 # This program is free software; you can redistribute it or modify
 # it under the terms of the GNU General Public License version 3.0
 #
 # Changelog:
-#       - 0.6.2 update for multipipeline output
-#       - 0.6.1 rewrite for better coding standards and rspec tests
-# 	- 0.6.0 first stable release, working with first Logstash 5.0 release
-# 	- 0.5.0 first beta, working with Logstash 5.0 release
-# 	- 0.4.0 add thresholds and performance data for inflight events
-#	- 0.3.0 change thresholds to adopt plugin syntax, change api calls for
-#	  Logstash v5-alpha5
-# 	- 0.2.0 add heap and file descriptor thresholds
-# 	- 0.1.0 initial, untested prototype
+#   - 0.7.1 fix multipipeline checks, improve errorhandling
+#   - 0.6.2 update for multipipeline output
+#   - 0.6.1 rewrite for better coding standards and rspec tests
+#   - 0.6.0 first stable release, working with first Logstash 5.0 release
+#   - 0.5.0 first beta, working with Logstash 5.0 release
+#   - 0.4.0 add thresholds and performance data for inflight events
+#   - 0.3.0 change thresholds to adopt plugin syntax, change api calls for
+#	Logstash v5-alpha5
+#   - 0.2.0 add heap and file descriptor thresholds
+#   - 0.1.0 initial, untested prototype
 #
 #
 # Plugin check for icinga
@@ -38,6 +39,7 @@ require 'json'
 require 'net/http'
 require 'uri'
 require 'optparse'
+require 'time'
 
 class CheckLogstash
   class Status
@@ -260,7 +262,7 @@ class CheckLogstash
     end
   end
 
-  Version = '0.6.1-1'
+  Version = '0.7.1-0'
   DEFAULT_PORT = 9600
   DEFAULT_HOST = '127.0.0.1'
 
@@ -486,7 +488,7 @@ class CheckLogstash
         error_counter += result.get('pipelines.' + named_pipeline[0] + '.reloads.failures').to_i
 
         config_reload_error_message = result.get('pipelines.' + named_pipeline[0] + '.reloads.last_error.message').to_s.strip
-        config_reload_errors_report = config_reload_errors_report + " " + named_pipeline[0] + ": " + (config_reload_error_message.empty? ? "OK" : config_reload_error_meesage) + ";"
+        config_reload_errors_report = config_reload_errors_report + " " + named_pipeline[0] + ": " + (config_reload_error_message.empty? ? "OK" : config_reload_error_message) + ";"
       end
 
       if error_counter > 0
@@ -498,10 +500,28 @@ class CheckLogstash
       config_reload_errors = (result.get('pipeline.reloads.failures')).to_i
       config_reload_error_message = (result.get('pipeline.reloads.last_error.message'))
       config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
+      config_reload_last_success_timestamp_str = result.get('pipeline.reloads.last_success_timestamp')
+      config_reload_last_failure_timestamp_str = result.get('pipeline.reloads.last_failure_timestamp')
+      if config_reload_last_success_timestamp_str == nil
+        config_reload_last_success_timestamp_str = '1970-01-01'
+      end
+      if config_reload_last_failure_timestamp_str == nil
+        config_reload_last_failure_timestamp_str = '1970-01-02'
+      end
+      #puts config_reload_last_success_timestamp_str
+      #puts config_reload_last_failure_timestamp_str
+      config_reload_last_success_timestamp = DateTime.parse(config_reload_last_success_timestamp_str)
+      config_reload_last_failure_timestamp = DateTime.parse(config_reload_last_failure_timestamp_str)
+      #puts 'last_success_timestamp='+config_reload_last_success_timestamp.inspect
+      #puts 'last_failure_timestamp='+config_reload_last_failure_timestamp.inspect
       # the following would output the whole errormessage which is too long as output of a monitoring plugin
       # config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
-      if config_reload_errors > 0
-        Critical.new(config_reload_errors_report)
+      if config_reload_last_success_timestamp < config_reload_last_failure_timestamp
+        if config_reload_errors > 0
+          Critical.new(config_reload_errors_report)
+        else
+          OK.new(config_reload_errors_report)
+        end
       else
         OK.new(config_reload_errors_report)
       end
