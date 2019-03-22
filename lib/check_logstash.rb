@@ -324,7 +324,12 @@ class CheckLogstash
   end
 
   def fetch
-    Fetcher.fetch(host, port)
+    begin
+      Fetcher.fetch(host, port)
+    rescue Exception
+      puts "Can not connect to Logstash"
+      exit(3)
+    end
   end
 
   def performance_data(result)
