@@ -3,14 +3,15 @@
 # File : check_logstash
 # Author : Thomas Widhalm, Netways
 # E-Mail: thomas.widhalm@netways.de
-# Date : 14/09/2018
+# Date : 22/03/2019
 #
-# Version: 0.7.1-0
+# Version: 0.7.2-0
 #
 # This program is free software; you can redistribute it or modify
 # it under the terms of the GNU General Public License version 3.0
 #
 # Changelog:
+#   - 0.7.2 fix handling of xpack-monitoring pipeline
 #   - 0.7.1 fix multipipeline checks, improve errorhandling
 #   - 0.6.2 update for multipipeline output
 #   - 0.6.1 rewrite for better coding standards and rspec tests
@@ -262,7 +263,7 @@ class CheckLogstash
     end
   end
 
-  Version = '0.7.1-0'
+  Version = '0.7.2-0'
   DEFAULT_PORT = 9600
   DEFAULT_HOST = '127.0.0.1'
 
@@ -354,12 +355,14 @@ class CheckLogstash
     inflight_arr = []
     if Gem::Version.new(result.get('version')) >= Gem::Version.new('6.0.0')
       for named_pipeline in result.get('pipelines') do
-        events_in = result.get('pipelines.' + named_pipeline[0] + '.events.in').to_i
-        events_out = result.get('pipelines.' + named_pipeline[0] + '.events.out').to_i
+        if named_pipeline[0] != ".monitoring-logstash"
+          events_in = result.get('pipelines.' + named_pipeline[0] + '.events.in').to_i
+          events_out = result.get('pipelines.' + named_pipeline[0] + '.events.out').to_i
 
-        inflight_events = events_out - events_in
-        inflight_arr.push(PerfData.report_counter(result, 'pipelines.' + named_pipeline[0] + '.events.out', nil, nil, 0, nil))
-        inflight_arr.push(PerfData_derived.report('inflight_events_' + named_pipeline[0], inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil))
+          inflight_events = events_out - events_in
+          inflight_arr.push(PerfData.report_counter(result, 'pipelines.' + named_pipeline[0] + '.events.out', nil, nil, 0, nil))
+          inflight_arr.push(PerfData_derived.report('inflight_events_' + named_pipeline[0], inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil))
+        end
       end
     else
       inflight_events = (result.get('pipeline.events.out') - result.get('pipeline.events.in')).to_i
@@ -430,20 +433,22 @@ class CheckLogstash
       critical_counter = 0
 
       for named_pipeline in result.get('pipelines') do
-        events_in = result.get('pipelines.' + named_pipeline[0] + '.events.in').to_i
-        events_out = result.get('pipelines.' + named_pipeline[0] + '.events.out').to_i
+        if named_pipeline[0] != ".monitoring-logstash"
+          events_in = result.get('pipelines.' + named_pipeline[0] + '.events.in').to_i
+          events_out = result.get('pipelines.' + named_pipeline[0] + '.events.out').to_i
 
-        inflight_events = events_out - events_in
-        inflight_events_report = inflight_events_report + " " + named_pipeline[0] + ": " + inflight_events.to_s + ";"
+          inflight_events = events_out - events_in
+          inflight_events_report = inflight_events_report + " " + named_pipeline[0] + ": " + inflight_events.to_s + ";"
 
-        if critical_inflight_events_max && critical_inflight_events_max < inflight_events
-          critical_counter += 1
-        elsif critical_inflight_events_min && critical_inflight_events_min > inflight_events
-          critical_counter += 1
-        elsif warning_inflight_events_max && warning_inflight_events_max < inflight_events
-          warn_counter += 1
-        elsif warning_inflight_events_min && warning_inflight_events_min > inflight_events
-          warn_counter += 1
+          if critical_inflight_events_max && critical_inflight_events_max < inflight_events
+            critical_counter += 1
+          elsif critical_inflight_events_min && critical_inflight_events_min > inflight_events
+            critical_counter += 1
+          elsif warning_inflight_events_max && warning_inflight_events_max < inflight_events
+            warn_counter += 1
+          elsif warning_inflight_events_min && warning_inflight_events_min > inflight_events
+            warn_counter += 1
+          end
         end
       end
       # If any of the pipelines is above the configured values we throw the highest common alert.
@@ -485,10 +490,12 @@ class CheckLogstash
       error_counter = 0
 
       for named_pipeline in result.get('pipelines') do
-        error_counter += result.get('pipelines.' + named_pipeline[0] + '.reloads.failures').to_i
+        if named_pipeline[0] != ".monitoring-logstash"
+          error_counter += result.get('pipelines.' + named_pipeline[0] + '.reloads.failures').to_i
 
-        config_reload_error_message = result.get('pipelines.' + named_pipeline[0] + '.reloads.last_error.message').to_s.strip
-        config_reload_errors_report = config_reload_errors_report + " " + named_pipeline[0] + ": " + (config_reload_error_message.empty? ? "OK" : config_reload_error_message) + ";"
+          config_reload_error_message = result.get('pipelines.' + named_pipeline[0] + '.reloads.last_error.message').to_s.strip
+          config_reload_errors_report = config_reload_errors_report + " " + named_pipeline[0] + ": " + (config_reload_error_message.empty? ? "OK" : config_reload_error_message) + ";"
+        end
       end
 
       if error_counter > 0
