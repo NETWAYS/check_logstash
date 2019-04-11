@@ -3,14 +3,15 @@
 # File : check_logstash
 # Author : Thomas Widhalm, Netways
 # E-Mail: thomas.widhalm@netways.de
-# Date : 22/03/2019
+# Date : 11/04/2019
 #
-# Version: 0.7.2-0
+# Version: 0.7.3-0
 #
 # This program is free software; you can redistribute it or modify
 # it under the terms of the GNU General Public License version 3.0
 #
 # Changelog:
+#   - 0.7.3 fix inflight event calculation
 #   - 0.7.2 fix handling of xpack-monitoring pipeline
 #   - 0.7.1 fix multipipeline checks, improve errorhandling
 #   - 0.6.2 update for multipipeline output
@@ -359,13 +360,13 @@ class CheckLogstash
           events_in = result.get('pipelines.' + named_pipeline[0] + '.events.in').to_i
           events_out = result.get('pipelines.' + named_pipeline[0] + '.events.out').to_i
 
-          inflight_events = events_out - events_in
+          inflight_events = events_in - events_out
           inflight_arr.push(PerfData.report_counter(result, 'pipelines.' + named_pipeline[0] + '.events.out', nil, nil, 0, nil))
           inflight_arr.push(PerfData_derived.report('inflight_events_' + named_pipeline[0], inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil))
         end
       end
     else
-      inflight_events = (result.get('pipeline.events.out') - result.get('pipeline.events.in')).to_i
+      inflight_events = (result.get('pipeline.events.in') - result.get('pipeline.events.out')).to_i
       inflight_arr.push(PerfData.report_counter(result, 'pipeline.events.out', nil, nil, 0, nil))
       inflight_arr.push(PerfData_derived.report('inflight_events', inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil))
     end
@@ -437,7 +438,7 @@ class CheckLogstash
           events_in = result.get('pipelines.' + named_pipeline[0] + '.events.in').to_i
           events_out = result.get('pipelines.' + named_pipeline[0] + '.events.out').to_i
 
-          inflight_events = events_out - events_in
+          inflight_events = events_in - events_out
           inflight_events_report = inflight_events_report + " " + named_pipeline[0] + ": " + inflight_events.to_s + ";"
 
           if critical_inflight_events_max && critical_inflight_events_max < inflight_events
