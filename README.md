@@ -58,7 +58,7 @@ or
 
 ## Finding viable thresholds ##
 
-To set your thresholds for inflight events to a sensnible value use baselining. Don't set thresholds from the beginning but let Graphite or other graphers create graphs for inflight events. Just add some percent to what Logstash usually processes and set this as threshold. Or use the `generator` plugin to put as many events through your Elastic stack as possible. Use some percent (e.g. 90%) from this maximum as a threshold. Keep in mind that changing your configuration might change the maximum inflight events.
+To set your thresholds for inflight events to a sensible value use baselining. Don't set thresholds from the beginning but let Graphite or other graphers create graphs for inflight events. Just add some percent to what Logstash usually processes and set this as threshold. Or use the `generator` plugin to put as many events through your Elastic stack as possible. Use some percent (e.g. 90%) from this maximum as a threshold. Keep in mind that changing your configuration might change the maximum inflight events.
 
 ### Configuration check ###
 
