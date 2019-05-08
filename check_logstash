@@ -126,7 +126,7 @@ class CheckLogstash
         end
 
         opts.on('-H', '--hostname HOST', 'Logstash host') { |v| check.host = v }
-        opts.on('-p', '--hostname PORT', 'Logstash API port') { |v| check.port = v.to_i }
+        opts.on('-p', '--port PORT', 'Logstash API port') { |v| check.port = v.to_i }
         opts.on('--file-descriptor-threshold-warn WARN', 'The percentage relative to the process file descriptor limit on which to be a warning result.') { |v| check.warning_file_descriptor_percent = v.to_i }
         opts.on('--file-descriptor-threshold-crit CRIT', 'The percentage relative to the process file descriptor limit on which to be a critical result.') { |v| check.critical_file_descriptor_percent = v.to_i }
         opts.on('--heap-usage-threshold-warn WARN', 'The percentage relative to the heap size limit on which to be a warning result.') { |v| check.warning_heap_percent = v.to_i }
@@ -483,7 +483,7 @@ class CheckLogstash
 
   # the following would be needed to output the whole errormessage
   # CONFIG_RELOAD_REPORT = "Config reload errormessage: %s"
-  CONFIG_RELOAD_REPORT = 'Config reload syntax check' 
+  CONFIG_RELOAD_REPORT = 'Config reload syntax check'
   def config_reload_health(result)
     # Same as above: since version 6.0.0 we can have multiple pipelines.
     if Gem::Version.new(result.get('version')) >= Gem::Version.new('6.0.0')
@@ -548,7 +548,7 @@ class CheckLogstash
       OK.new(cpu_usage_percent_report)
     end
   end
- 
+
 end
 
 if __FILE__ == $PROGRAM_NAME
