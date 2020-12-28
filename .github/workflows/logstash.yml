@@ -30,6 +30,6 @@ jobs:
 
       - name: Test with Logstash
         run: |
-          /usr/share/logstash/bin/logstash  --path.settings /etc/logstash/ --path.data /tmp/logstash/data --path.logs /tmp/logstash/logs -e "" 
+          /usr/share/logstash/bin/logstash  --path.settings /etc/logstash/ --path.data /tmp/logstash/data --path.logs /tmp/logstash/logs -e 'input { tcp { port => 5044 }}' &
           while ! echo exit | curl http://localhost:9600; do sleep 10; done
           ./check_logstash
