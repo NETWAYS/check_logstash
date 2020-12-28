@@ -12,6 +12,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    strategy:
+      max-parallel: 4
+      matrix:
+        logstashversion: [6, 7]
+
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -21,7 +26,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install gpg curl
           wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
-          echo "deb https://artifacts.elastic.co/packages/7.x/apt stable main" | sudo tee /etc/apt/sources.list.d/elastic-7.x.list
+          echo "deb https://artifacts.elastic.co/packages/${{ matrix.logstashversion }}.x/apt stable main" | sudo tee /etc/apt/sources.list.d/elastic.list
           sudo apt-get update
           sudo apt-get install logstash
           mkdir -p /tmp/logstash/data /tmp/logstash/logs
@@ -30,6 +35,7 @@ jobs:
 
       - name: Test with Logstash
         run: |
+          if [ "${{ matrix.logstashversion }}" -gt "6" ]; then unset JAVA_HOME; fi 
           /usr/share/logstash/bin/logstash  --path.settings /etc/logstash/ --path.data /tmp/logstash/data --path.logs /tmp/logstash/logs -e 'input { tcp { port => 5044 }}' &
           while ! echo exit | curl http://localhost:9600; do sleep 10; done
           ./check_logstash -H localhost
