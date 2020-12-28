@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Install dependencies
         run: |
-          gem install rspec
+          sudo gem install rspec
       - name: Run rake
         run: |
           rake
