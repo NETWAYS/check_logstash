@@ -33,9 +33,11 @@ jobs:
           mkdir -p /tmp/logstash/data /tmp/logstash/logs
           sudo bash -c 'echo "http.host: 127.0.0.1" >> /etc/logstash/logstash.yml'
           sudo bash -c 'echo "http.port: 9600-9700" >> /etc/logstash/logstash.yml'
+          sudo gem install rspec
       - name: Test with Logstash
         run: |
           if [ "${{ matrix.logstashversion }}" -gt "6" ]; then unset JAVA_HOME; fi 
           /usr/share/logstash/bin/logstash  --path.settings /etc/logstash/ --path.data /tmp/logstash/data --path.logs /tmp/logstash/logs -e 'input { tcp { port => 5044 }}' &
           while ! echo exit | curl http://localhost:9600; do sleep 10; done
+          rake
           ./check_logstash -H localhost
