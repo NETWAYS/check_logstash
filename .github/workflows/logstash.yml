@@ -25,6 +25,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install logstash
           mkdir -p /tmp/logstash/data /tmp/logstash/logs
+          echo "http.host: 127.0.0.1" >> /etc/logstash/logstash.yml
+          echo "http.port: 9600-9700" >> /etc/logstash/logstash.yml
 
       - name: Test with Logstash
         run: |
