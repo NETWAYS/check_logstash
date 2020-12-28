@@ -1,6 +1,6 @@
 name: check_logstash
 description: "file:///README.md"
-url: "https://github.com/widhalmt/check_logstash"
+url: "https://github.com/NETWAYS/check_logstash"
 tags: Logstash
 vendor: Linux
 target: Log
