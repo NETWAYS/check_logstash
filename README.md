@@ -4,9 +4,7 @@
 
 A monitoring plugin for Icinga (2), Nagios, Shinken, Naemon, etc. to check the Logstash API (Logstash v.5+)
 
-While the plugin works with the first release of Logstash 5.0, there is still some work to be done and some tests to be made.
-
-**A word of warning** Be sure to read the configuration check part of this readme since there is a problem with this feature.
+**A word of warning** Be sure to read the configuration check part of this readme since there is a problem with this feature in past releases of Logstash.
 
 ## Usage ##
 
@@ -92,7 +90,3 @@ There are some default values defined in the plugin. Some values are merely put 
 While `check_logstash` is the finished plugin you can use, you might want to change something and rebuild the script.
 
 Simply issue the `rake` command (if you have Rake installed) and it will run tests (and rubocop when all cops are pleased) and create the script from the library files. *Don't change the `check_logstash` file since it will be overwritten by Rake, change the files in `lib/` instead.
-
-## Repositories ##
-
-You can find some rpm packaged versions of `check_logstash` at [my repo](http://devel.widhalm.or.at/mirror/pub/). Be prepared that I might change the location to a more Netways or Icinga specific repository when my build process matured a bit.
