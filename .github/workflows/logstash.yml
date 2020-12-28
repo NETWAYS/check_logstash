@@ -1,5 +1,5 @@
 ---
-name: Logstash Syntax
+name: Acceptance Tests
 on:
   push:
     tags:

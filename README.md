@@ -1,4 +1,7 @@
 # check_logstash #
+
+[![Acceptance Tests](https://github.com/widhalmt/check_logstash/workflows/Acceptance%20Tests/badge.svg)](https://github.com/widhalmt/check_logstash/actions?query=workflow%3A%22Acceptance+Tests%22)
+
 A monitoring plugin for Icinga (2), Nagios, Shinken, Naemon, etc. to check the Logstash API (Logstash v.5+)
 
 While the plugin works with the first release of Logstash 5.0, there is still some work to be done and some tests to be made.
