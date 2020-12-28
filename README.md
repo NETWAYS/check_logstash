@@ -1,6 +1,6 @@
 # check_logstash #
 
-[![Rake](https://github.com/widhalmt/check_logstash/workflows/Rake%20Tests/badge.svg)](https://github.com/widhalmt/check_logstash/actions?query=workflow%3A%22Rake+Tests%22) [![Acceptance Tests](https://github.com/widhalmt/check_logstash/workflows/Acceptance%20Tests/badge.svg)](https://github.com/widhalmt/check_logstash/actions?query=workflow%3A%22Acceptance+Tests%22)
+[![Rake](https://github.com/NETWAYS/check_logstash/workflows/Rake%20Tests/badge.svg)](https://github.com/NETWAYS/check_logstash/actions?query=workflow%3A%22Rake+Tests%22) [![Acceptance Tests](https://github.com/NETWAYS/check_logstash/workflows/Acceptance%20Tests/badge.svg)](https://github.com/NETWAYS/check_logstash/actions?query=workflow%3A%22Acceptance+Tests%22)
 
 A monitoring plugin for Icinga (2), Nagios, Shinken, Naemon, etc. to check the Logstash API (Logstash v.5+)
 
