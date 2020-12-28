@@ -15,7 +15,7 @@ jobs:
     strategy:
       max-parallel: 4
       matrix:
-        logstashversion: [6, 7]
+        logstashversion: [5, 6, 7]
 
     steps:
       - name: Check out code
