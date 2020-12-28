@@ -1,0 +1,22 @@
+---
+name: Rake Tests
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          sudo gem install rspec
+      - name: Run rake
+        run: |
+          rake
