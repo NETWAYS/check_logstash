@@ -5,12 +5,13 @@
 # E-Mail: thomas.widhalm@netways.de
 # Date : 11/04/2019
 #
-# Version: 0.7.3-0
+# Version: 0.7.4-0
 #
 # This program is free software; you can redistribute it or modify
 # it under the terms of the GNU General Public License version 3.0
 #
 # Changelog:
+#   - 0.7.4 fix reload error detection, add verbose option
 #   - 0.7.3 fix inflight event calculation
 #   - 0.7.2 fix handling of xpack-monitoring pipeline
 #   - 0.7.1 fix multipipeline checks, improve errorhandling
@@ -125,7 +126,8 @@ class CheckLogstash
           exit 3
         end
 
-        opts.on('-H', '--hostname HOST', 'Logstash host') { |v| check.host = v }
+        opts.on('-v', '--verbose', 'Run verbosely') { |v| check.verbose = v }
+		opts.on('-H', '--hostname HOST', 'Logstash host') { |v| check.host = v }
         opts.on('-p', '--port PORT', 'Logstash API port') { |v| check.port = v.to_i }
         opts.on('--file-descriptor-threshold-warn WARN', 'The percentage relative to the process file descriptor limit on which to be a warning result.') { |v| check.warning_file_descriptor_percent = v.to_i }
         opts.on('--file-descriptor-threshold-crit CRIT', 'The percentage relative to the process file descriptor limit on which to be a critical result.') { |v| check.critical_file_descriptor_percent = v.to_i }
@@ -176,6 +178,7 @@ class CheckLogstash
           exit
         end
       end.parse(args)
+	  puts '[DEBUG] ' + check.inspect if check.verbose
     end
   end # module CLI
 
@@ -265,6 +268,8 @@ class CheckLogstash
   end
 
   Version = '0.7.2-0'
+  DEFAULT_VERBOSE = false
+  
   DEFAULT_PORT = 9600
   DEFAULT_HOST = '127.0.0.1'
 
@@ -279,6 +284,7 @@ class CheckLogstash
   DEFAULT_INFLIGHT_EVENTS_CRITICAL_MIN = nil
   DEFAULT_INFLIGHT_EVENTS_CRITICAL_MAX = nil
 
+  attr_accessor :verbose
   attr_accessor :host, :port
   attr_accessor :warning_file_descriptor_percent
   attr_accessor :critical_file_descriptor_percent
@@ -292,7 +298,9 @@ class CheckLogstash
   attr_accessor :critical_inflight_events_max
 
   def initialize
-    @host = DEFAULT_HOST
+	@verbose = DEFAULT_VERBOSE
+    
+	@host = DEFAULT_HOST
     @port = DEFAULT_PORT
 
     self.warning_file_descriptor_percent = DEFAULT_FILE_DESCRIPTOR_WARNING
@@ -492,10 +500,33 @@ class CheckLogstash
 
       for named_pipeline in result.get('pipelines') do
         if named_pipeline[0] != ".monitoring-logstash"
-          error_counter += result.get('pipelines.' + named_pipeline[0] + '.reloads.failures').to_i
-
-          config_reload_error_message = result.get('pipelines.' + named_pipeline[0] + '.reloads.last_error.message').to_s.strip
-          config_reload_errors_report = config_reload_errors_report + " " + named_pipeline[0] + ": " + (config_reload_error_message.empty? ? "OK" : config_reload_error_message) + ";"
+            config_reload_errors = result.get('pipelines.' + named_pipeline[0] + '.reloads.failures').to_i
+			config_reload_error_message = result.get('pipelines.' + named_pipeline[0] + '.reloads.last_error.message').to_s.strip
+            puts '[DEBUG] pipelines.' + named_pipeline[0] + '.reloads.failures=' + config_reload_errors.to_s if self.verbose
+            puts '[DEBUG] config_reload_error_message='+config_reload_error_message.inspect if self.verbose
+            
+            config_reload_last_success_timestamp_str = result.get('pipelines.' + named_pipeline[0] + '.reloads.last_success_timestamp')
+            config_reload_last_failure_timestamp_str = result.get('pipelines.' + named_pipeline[0] + '.reloads.last_failure_timestamp')
+			if config_reload_last_success_timestamp_str == nil
+				config_reload_last_success_timestamp_str = '1970-01-01'
+			end
+			if config_reload_last_failure_timestamp_str == nil
+				config_reload_last_failure_timestamp_str = '1970-01-02'
+			end
+			config_reload_last_success_timestamp = DateTime.parse(config_reload_last_success_timestamp_str)
+			config_reload_last_failure_timestamp = DateTime.parse(config_reload_last_failure_timestamp_str)
+			puts '[DEBUG] last_success_timestamp='+config_reload_last_success_timestamp.inspect if self.verbose
+			puts '[DEBUG] last_failure_timestamp='+config_reload_last_failure_timestamp.inspect if self.verbose
+			if config_reload_last_success_timestamp < config_reload_last_failure_timestamp
+				if config_reload_errors > 0
+					error_counter += result.get('pipelines.' + named_pipeline[0] + '.reloads.failures').to_i
+					config_reload_errors_report = config_reload_errors_report + " " + named_pipeline[0] + ": " + config_reload_error_message + ";"
+				else
+					config_reload_errors_report = config_reload_errors_report + " " + named_pipeline[0] + ": " + "OK;"
+				end
+			else
+				config_reload_errors_report = config_reload_errors_report + " " + named_pipeline[0] + ": " + "OK;"
+			end
         end
       end
 
@@ -507,6 +538,8 @@ class CheckLogstash
     else
       config_reload_errors = (result.get('pipeline.reloads.failures')).to_i
       config_reload_error_message = (result.get('pipeline.reloads.last_error.message'))
+      puts '[DEBUG] config_reload_errors='+config_reload_errors.inspect if check.verbose
+      puts '[DEBUG] config_reload_error_message='+config_reload_error_message.inspect if check.verbose
       config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
       config_reload_last_success_timestamp_str = result.get('pipeline.reloads.last_success_timestamp')
       config_reload_last_failure_timestamp_str = result.get('pipeline.reloads.last_failure_timestamp')
@@ -516,12 +549,10 @@ class CheckLogstash
       if config_reload_last_failure_timestamp_str == nil
         config_reload_last_failure_timestamp_str = '1970-01-02'
       end
-      #puts config_reload_last_success_timestamp_str
-      #puts config_reload_last_failure_timestamp_str
       config_reload_last_success_timestamp = DateTime.parse(config_reload_last_success_timestamp_str)
       config_reload_last_failure_timestamp = DateTime.parse(config_reload_last_failure_timestamp_str)
-      #puts 'last_success_timestamp='+config_reload_last_success_timestamp.inspect
-      #puts 'last_failure_timestamp='+config_reload_last_failure_timestamp.inspect
+      puts '[DEBUG] last_success_timestamp='+config_reload_last_success_timestamp.inspect if self.verbose
+      puts '[DEBUG] last_failure_timestamp='+config_reload_last_failure_timestamp.inspect if self.verbose
       # the following would output the whole errormessage which is too long as output of a monitoring plugin
       # config_reload_errors_report = format(CONFIG_RELOAD_REPORT, config_reload_error_message)
       if config_reload_last_success_timestamp < config_reload_last_failure_timestamp
