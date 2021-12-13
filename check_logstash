@@ -299,7 +299,7 @@ class CheckLogstash
     self.critical_file_descriptor_percent = DEFAULT_FILE_DESCRIPTOR_CRITICAL
     self.warning_heap_percent = DEFAULT_HEAP_WARNING
     self.critical_heap_percent = DEFAULT_HEAP_CRITICAL
-    self.warning_cpu_percent = DEFAULT_CPU_CRITICAL
+    self.warning_cpu_percent = DEFAULT_CPU_WARNING
     self.critical_cpu_percent = DEFAULT_CPU_CRITICAL
     self.warning_inflight_events_min = DEFAULT_INFLIGHT_EVENTS_WARNING_MIN
     self.warning_inflight_events_max = DEFAULT_INFLIGHT_EVENTS_WARNING_MAX
@@ -457,7 +457,7 @@ class CheckLogstash
       if critical_counter > 0
         Critical.new(inflight_events_report)
       elsif warn_counter > 0
-        Warning.new(infligh_events_report)
+        Warning.new(inflight_events_report)
       else
         OK.new(inflight_events_report)
       end
@@ -492,10 +492,25 @@ class CheckLogstash
 
       for named_pipeline in result.get('pipelines') do
         if named_pipeline[0] != ".monitoring-logstash"
-          error_counter += result.get('pipelines.' + named_pipeline[0] + '.reloads.failures').to_i
+          config_reload_last_success_timestamp_str = result.get('pipelines.' + named_pipeline[0] + '.reloads.last_success_timestamp')
+          config_reload_last_failure_timestamp_str = result.get('pipelines.' + named_pipeline[0] + '.reloads.last_failure_timestamp')
+          if config_reload_last_success_timestamp_str == nil
+            config_reload_last_success_timestamp_str = '1970-01-01'
+          end
+          if config_reload_last_failure_timestamp_str == nil
+            config_reload_last_failure_timestamp_str = '1970-01-02'
+          end
+          config_reload_last_success_timestamp = DateTime.parse(config_reload_last_success_timestamp_str)
+          config_reload_last_failure_timestamp = DateTime.parse(config_reload_last_failure_timestamp_str)
+          #puts 'last_success_timestamp['+named_pipeline[0]+']='+config_reload_last_success_timestamp.inspect
+          #puts 'last_failure_timestamp['+named_pipeline[0]+']='+config_reload_last_failure_timestamp.inspect
 
-          config_reload_error_message = result.get('pipelines.' + named_pipeline[0] + '.reloads.last_error.message').to_s.strip
-          config_reload_errors_report = config_reload_errors_report + " " + named_pipeline[0] + ": " + (config_reload_error_message.empty? ? "OK" : config_reload_error_message) + ";"
+          if config_reload_last_success_timestamp < config_reload_last_failure_timestamp
+            error_counter += result.get('pipelines.' + named_pipeline[0] + '.reloads.failures').to_i
+
+            config_reload_error_message = result.get('pipelines.' + named_pipeline[0] + '.reloads.last_error.message').to_s.strip
+            config_reload_errors_report = config_reload_errors_report + " " + named_pipeline[0] + ": " + (config_reload_error_message.empty? ? "OK" : config_reload_error_message) + ";"
+          end
         end
       end
 
