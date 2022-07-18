@@ -5,12 +5,13 @@
 # E-Mail: thomas.widhalm@netways.de
 # Date : 11/04/2019
 #
-# Version: 0.7.3-0
+# Version: 0.7.4-0
 #
 # This program is free software; you can redistribute it or modify
 # it under the terms of the GNU General Public License version 3.0
 #
 # Changelog:
+#   - 0.7.4 Add option for checking only one pipeline + better handling for threshold ranges
 #   - 0.7.3 fix inflight event calculation
 #   - 0.7.2 fix handling of xpack-monitoring pipeline
 #   - 0.7.1 fix multipipeline checks, improve errorhandling
@@ -127,6 +128,7 @@ class CheckLogstash
 
         opts.on('-H', '--hostname HOST', 'Logstash host') { |v| check.host = v }
         opts.on('-p', '--hostname PORT', 'Logstash API port') { |v| check.port = v.to_i }
+        opts.on('-P', '--pipeline PIPELINE', 'Pipeline to monitor, uses all pipelines when not set') { |v| check.pipeline = v }
         opts.on('--file-descriptor-threshold-warn WARN', 'The percentage relative to the process file descriptor limit on which to be a warning result.') { |v| check.warning_file_descriptor_percent = v.to_i }
         opts.on('--file-descriptor-threshold-crit CRIT', 'The percentage relative to the process file descriptor limit on which to be a critical result.') { |v| check.critical_file_descriptor_percent = v.to_i }
         opts.on('--heap-usage-threshold-warn WARN', 'The percentage relative to the heap size limit on which to be a warning result.') { |v| check.warning_heap_percent = v.to_i }
@@ -138,12 +140,13 @@ class CheckLogstash
           options_error.call('--inflight-events-warn requires an argument') if v.nil?
 
           values = v.split(':')
-          options_error.call("--inflight-events-warn has invalid argument #{v}") if values.count.zero? || values.count > 2
+          no_max = v[-1] == ':'
+          options_error.call("--inflight-events-warn has invalid argument #{v}") if v[0] == ':' || values.count.zero? || values.count > 2
 
           begin
             if values.count == 1
-              check.warning_inflight_events_min = -1
-              check.warning_inflight_events_max = values[0].to_i
+              check.warning_inflight_events_min = values[0].to_i if no_max
+              check.warning_inflight_events_max = values[0].to_i unless no_max
             else
               check.warning_inflight_events_min = values[0].to_i
               check.warning_inflight_events_max = values[1].to_i
@@ -156,12 +159,13 @@ class CheckLogstash
           options_error.call('--inflight-events-critical requires an argument') if v.nil?
 
           values = v.split(':')
-          options_error.call("--inflight-events-critical has invalid argument #{v}") if values.count.zero? || values.count > 2
+          no_max = v[-1] == ':'
+          options_error.call("--inflight-events-critical has invalid argument #{v}") if v[0] == ':' || values.count.zero? || values.count > 2
 
           begin
             if values.count == 1
-              check.critical_inflight_events_min = -1
-              check.critical_inflight_events_max = values[0].to_i
+              check.critical_inflight_events_min = values[0].to_i if no_max
+              check.critical_inflight_events_max = values[0].to_i unless no_max
             else
               check.critical_inflight_events_min = values[0].to_i
               check.critical_inflight_events_max = values[1].to_i
@@ -212,7 +216,12 @@ class CheckLogstash
 
     module_function
 
-    def fetch(host, port)
+    def critical(message)
+      puts message
+      exit(3)
+    end
+
+    def fetch(host, port, pipeline)
       uri = URI.parse("http://#{host}:#{port}/_node/stats")
       http = Net::HTTP.new(uri.host, uri.port)
       request = Net::HTTP::Get.new(uri.request_uri)
@@ -221,10 +230,13 @@ class CheckLogstash
       critical("Got HTTP response #{response.code}") if response.code != '200'
 
       result = begin
-        JSON.parse(response.body)
+        data = JSON.parse(response.body)
+        data['pipelines'].select! {|p| p == pipeline} if pipeline
+        data
       rescue => e
         critical("Failed parsing JSON response. #{e.class.name}")
       end
+      critical("Pipeline not found: #{pipeline}") if pipeline && result['pipelines'].empty?
       Result.from_hash(result)
     end
   end
@@ -259,14 +271,15 @@ class CheckLogstash
 
     module_function
 
-    def report(label, value, warning = nil, critical = nil, minimum = nil, maximum = nil)
-      format('%s=%s;%s;%s;%s;%s', label, value, warning, critical, minimum, maximum)
+    def report(label, value, warning_min = nil, warning_max = nil, critical_min = nil, critical_max = nil)
+      format('%s=%s;%s%s%s;%s%s%s', label, value, warning_min, warning_min ? ':' : '', warning_max, critical_min, critical_min ? ':' : '', critical_max)
     end
   end
 
-  Version = '0.7.2-0'
+  Version = '0.7.4-0'
   DEFAULT_PORT = 9600
   DEFAULT_HOST = '127.0.0.1'
+  DEFAULT_PIPELINE = nil
 
   DEFAULT_FILE_DESCRIPTOR_WARNING = 85
   DEFAULT_FILE_DESCRIPTOR_CRITICAL = 95
@@ -279,7 +292,7 @@ class CheckLogstash
   DEFAULT_INFLIGHT_EVENTS_CRITICAL_MIN = nil
   DEFAULT_INFLIGHT_EVENTS_CRITICAL_MAX = nil
 
-  attr_accessor :host, :port
+  attr_accessor :host, :port, :pipeline
   attr_accessor :warning_file_descriptor_percent
   attr_accessor :critical_file_descriptor_percent
   attr_accessor :warning_heap_percent
@@ -295,6 +308,7 @@ class CheckLogstash
     @host = DEFAULT_HOST
     @port = DEFAULT_PORT
 
+    self.pipeline = DEFAULT_PIPELINE
     self.warning_file_descriptor_percent = DEFAULT_FILE_DESCRIPTOR_WARNING
     self.critical_file_descriptor_percent = DEFAULT_FILE_DESCRIPTOR_CRITICAL
     self.warning_heap_percent = DEFAULT_HEAP_WARNING
@@ -329,7 +343,9 @@ class CheckLogstash
 
   def fetch
     begin
-      Fetcher.fetch(host, port)
+      Fetcher.fetch(host, port, pipeline)
+    rescue SystemExit
+      exit(3)
     rescue Exception
       puts "Can not connect to Logstash"
       exit(3)
@@ -362,13 +378,13 @@ class CheckLogstash
 
           inflight_events = events_in - events_out
           inflight_arr.push(PerfData.report_counter(result, 'pipelines.' + named_pipeline[0] + '.events.out', nil, nil, 0, nil))
-          inflight_arr.push(PerfData_derived.report('inflight_events_' + named_pipeline[0], inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil))
+          inflight_arr.push(PerfData_derived.report('inflight_events_' + named_pipeline[0], inflight_events, warning_inflight_events_min, warning_inflight_events_max, critical_inflight_events_min, critical_inflight_events_max))
         end
       end
     else
       inflight_events = (result.get('pipeline.events.in') - result.get('pipeline.events.out')).to_i
       inflight_arr.push(PerfData.report_counter(result, 'pipeline.events.out', nil, nil, 0, nil))
-      inflight_arr.push(PerfData_derived.report('inflight_events', inflight_events, warning_inflight_events_max, critical_inflight_events_max, 0, nil))
+      inflight_arr.push(PerfData_derived.report('inflight_events', inflight_events, warning_inflight_events_min, warning_inflight_events_max, critical_inflight_events_min, critical_inflight_events_max))
     end
 
     perfdata = common + inflight_arr
@@ -457,7 +473,7 @@ class CheckLogstash
       if critical_counter > 0
         Critical.new(inflight_events_report)
       elsif warn_counter > 0
-        Warning.new(infligh_events_report)
+        Warning.new(inflight_events_report)
       else
         OK.new(inflight_events_report)
       end
