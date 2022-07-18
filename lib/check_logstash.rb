@@ -5,12 +5,13 @@
 # E-Mail: thomas.widhalm@netways.de
 # Date : 11/04/2019
 #
-# Version: 0.7.4-0
+# Version: 0.8.0-0
 #
 # This program is free software; you can redistribute it or modify
 # it under the terms of the GNU General Public License version 3.0
 #
 # Changelog:
+#   - 0.8.0 Add option to check incoming/outgoing events per minute
 #   - 0.7.4 Add option for checking only one pipeline + better handling for threshold ranges
 #   - 0.7.3 fix inflight event calculation
 #   - 0.7.2 fix handling of xpack-monitoring pipeline
@@ -87,9 +88,11 @@ class CheckLogstash
       check = CheckLogstash.new
       parse(check, args)
 
-      # fetch the result
+      # fetch the result and load saved state
       result = check.fetch
-      health = check.health(result)
+      state = check.load_state
+      health = check.health(result, state)
+      check.save_events_state(result)
 
       # Get the maximum status code (Critical > Warning > OK)
       code = health.collect(&:to_i).max
@@ -108,7 +111,7 @@ class CheckLogstash
           'OK - Logstash seems to be doing fine.'
         end
 
-      puts "#{status} | #{check.performance_data(result)}\n"
+      puts "#{status} | #{check.performance_data(result, state)}\n"
       puts health.sort_by(&:to_i).reverse.join("\n")
 
       code
@@ -135,44 +138,25 @@ class CheckLogstash
         opts.on('--heap-usage-threshold-crit CRIT', 'The percentage relative to the heap size limit on which to be a critical result.') { |v| check.critical_heap_percent = v.to_i }
         opts.on('--cpu-usage-threshold-warn WARN', 'The percentage of CPU usage on which to be a warning result.') { |v| check.warning_cpu_percent = v.to_i }
         opts.on('--cpu-usage-threshold-crit CRIT', 'The percentage of CPU usage on which to be a critical result.') { |v| check.critical_cpu_percent = v.to_i }
-        # the following 2 blocks split : seperated ranges into 2 values. If only one value is given it's used as maximum
+        opts.on('--temp-filedir NAME', 'Directory to use for the temporary state file. Only used when one of the events-per-minute metrics is used. Defaults to /tmp') { |v| check.temp_file_dir = v }
+        # the following blocks split : seperated ranges into 2 values. If only one value is given it's used as maximum
         opts.on('--inflight-events-warn WARN', 'Threshold for inflight events to be a warning result. Use min:max for a range.') do |v|
-          options_error.call('--inflight-events-warn requires an argument') if v.nil?
-
-          values = v.split(':')
-          no_max = v[-1] == ':'
-          options_error.call("--inflight-events-warn has invalid argument #{v}") if v[0] == ':' || values.count.zero? || values.count > 2
-
-          begin
-            if values.count == 1
-              check.warning_inflight_events_min = values[0].to_i if no_max
-              check.warning_inflight_events_max = values[0].to_i unless no_max
-            else
-              check.warning_inflight_events_min = values[0].to_i
-              check.warning_inflight_events_max = values[1].to_i
-            end
-          rescue ArgumentError => e
-            options_error.call("--inflight-events-warn has invalid argument. #{e.message}")
-          end
+          check.warning_inflight_events_min, check.warning_inflight_events_max = parse_min_max_option('inflight-events-warn', v, options_error)
         end
         opts.on('--inflight-events-crit CRIT', 'Threshold for inflight events to be a critical result. Use min:max for a range.') do |v|
-          options_error.call('--inflight-events-critical requires an argument') if v.nil?
-
-          values = v.split(':')
-          no_max = v[-1] == ':'
-          options_error.call("--inflight-events-critical has invalid argument #{v}") if v[0] == ':' || values.count.zero? || values.count > 2
-
-          begin
-            if values.count == 1
-              check.critical_inflight_events_min = values[0].to_i if no_max
-              check.critical_inflight_events_max = values[0].to_i unless no_max
-            else
-              check.critical_inflight_events_min = values[0].to_i
-              check.critical_inflight_events_max = values[1].to_i
-            end
-          rescue ArgumentError => e
-            options_error.call("--inflight-events-crit has invalid argument. #{e.message}")
-          end
+          check.critical_inflight_events_min, check.critical_inflight_events_max = parse_min_max_option('inflight-events-crit', v, options_error)
+        end
+        opts.on('--events-in-per-minute-warn WARN', 'Threshold for the number of ingoing events per minute to be a warning. Use min:max for a range.') do |v|
+          check.warning_events_in_per_minute_min, check.warning_events_in_per_minute_max = parse_min_max_option('events-in-per-minute-warn', v, options_error)
+        end
+        opts.on('--events-in-per-minute-crit CRIT', 'Threshold for the number of ingoing events per minute to be critical. Use min:max for a range.') do |v|
+          check.critical_events_in_per_minute_min, check.critical_events_in_per_minute_max = parse_min_max_option('events-in-per-minute-crit', v, options_error)
+        end
+        opts.on('--events-out-per-minute-warn WARN', 'Threshold for the number of outgoing events per minute to be a warning. Use min:max for a range.') do |v|
+          check.warning_events_out_per_minute_min, check.warning_events_out_per_minute_max = parse_min_max_option('events-out-per-minute-warn', v, options_error)
+        end
+        opts.on('--events-out-per-minute-crit CRIT', 'Threshold for the number of outgoing events per minute to be critical. Use min:max for a range.') do |v|
+          check.critical_events_out_per_minute_min, check.critical_events_out_per_minute_max = parse_min_max_option('events-out-per-minute-crit', v, options_error)
         end
 
         opts.on_tail('-h', '--help', 'Show this message') do
@@ -181,6 +165,31 @@ class CheckLogstash
         end
       end.parse(args)
     end
+
+    def parse_min_max_option(parameter_name, v, options_error)
+      options_error.call("--#{parameter_name} requires an argument") if v.nil?
+
+      output_min = nil
+      output_max = nil
+
+      values = v.split(':')
+      no_max = v[-1] == ':'
+      options_error.call("--#{parameter_name} has invalid argument #{v}") if v[0] == ':' || values.count.zero? || values.count > 2
+
+      begin
+        if values.count == 1
+          output_min = values[0].to_i if no_max
+          output_max = values[0].to_i unless no_max
+        else
+          output_min = values[0].to_i
+          output_max = values[1].to_i
+        end
+      rescue ArgumentError => e
+        options_error.call("--#{parameter_name} has invalid argument. #{e.message}")
+      end
+
+      [output_min, output_max]
+    end
   end # module CLI
 
   class Result
@@ -188,10 +197,19 @@ class CheckLogstash
 
     def initialize(data)
       @data = data
+      @timestamp = Time.now.to_f
     end
 
     def self.from_hash(data)
       new(data)
+    end
+
+    def get_timestamp
+      @timestamp
+    end
+
+    def has_key?(key)
+      @data.has_key?(key)
     end
 
     # Provide dot-notation for querying a given field in a hash
@@ -231,13 +249,36 @@ class CheckLogstash
 
       result = begin
         data = JSON.parse(response.body)
-        data['pipelines'].select! {|p| p == pipeline} if pipeline
+        data['pipelines'].select! {|p| p ==  pipeline} if pipeline
         data
       rescue => e
         critical("Failed parsing JSON response. #{e.class.name}")
       end
       critical("Pipeline not found: #{pipeline}") if pipeline && result['pipelines'].empty?
       Result.from_hash(result)
+    end
+  end
+
+  module FileHandler
+    # handles the data state using a temporary file.
+
+    module_function
+
+    def read(temp_file_dir, host, port, pipeline)
+      temp_file_name = File.join(temp_file_dir, "check_logstash_#{host}_#{port}_#{pipeline || "all"}_events_state.tmp")
+      return {} unless File.file?(temp_file_name)
+      JSON.parse(File.read(temp_file_name))
+    rescue Exception => e
+      puts "Can not load state from temp file, reason: #{e}"
+      exit(3)
+    end
+
+    def save(temp_file_dir, host, port, pipeline, data)
+      temp_file_name = File.join(temp_file_dir, "check_logstash_#{host}_#{port}_#{pipeline || "all"}_events_state.tmp")
+      File.write(temp_file_name, data.to_json)
+    rescue Exception => e 
+      puts "Can not save state to temp file, reason: #{e}"
+      exit(3)
     end
   end
 
@@ -276,10 +317,11 @@ class CheckLogstash
     end
   end
 
-  Version = '0.7.4-0'
+  Version = '0.8.0-0'
   DEFAULT_PORT = 9600
   DEFAULT_HOST = '127.0.0.1'
   DEFAULT_PIPELINE = nil
+  DEFAULT_TEMP_FILEDIR = "/tmp/"
 
   DEFAULT_FILE_DESCRIPTOR_WARNING = 85
   DEFAULT_FILE_DESCRIPTOR_CRITICAL = 95
@@ -291,8 +333,16 @@ class CheckLogstash
   DEFAULT_INFLIGHT_EVENTS_WARNING_MAX = nil
   DEFAULT_INFLIGHT_EVENTS_CRITICAL_MIN = nil
   DEFAULT_INFLIGHT_EVENTS_CRITICAL_MAX = nil
+  DEFAULT_EVENTS_IN_PER_MINUTE_WARNING_MIN = nil
+  DEFAULT_EVENTS_IN_PER_MINUTE_WARNING_MAX = nil
+  DEFAULT_EVENTS_IN_PER_MINUTE_CRITICAL_MIN = nil
+  DEFAULT_EVENTS_IN_PER_MINUTE_CRITICAL_MAX = nil
+  DEFAULT_EVENTS_OUT_PER_MINUTE_WARNING_MIN = nil
+  DEFAULT_EVENTS_OUT_PER_MINUTE_WARNING_MAX = nil
+  DEFAULT_EVENTS_OUT_PER_MINUTE_CRITICAL_MIN = nil
+  DEFAULT_EVENTS_OUT_PER_MINUTE_CRITICAL_MAX = nil
 
-  attr_accessor :host, :port, :pipeline
+  attr_accessor :host, :port, :pipeline, :temp_file_dir
   attr_accessor :warning_file_descriptor_percent
   attr_accessor :critical_file_descriptor_percent
   attr_accessor :warning_heap_percent
@@ -303,6 +353,14 @@ class CheckLogstash
   attr_accessor :warning_inflight_events_max
   attr_accessor :critical_inflight_events_min
   attr_accessor :critical_inflight_events_max
+  attr_accessor :warning_events_out_per_minute_min
+  attr_accessor :warning_events_out_per_minute_max
+  attr_accessor :critical_events_out_per_minute_min
+  attr_accessor :critical_events_out_per_minute_max
+  attr_accessor :warning_events_in_per_minute_min
+  attr_accessor :warning_events_in_per_minute_max
+  attr_accessor :critical_events_in_per_minute_min
+  attr_accessor :critical_events_in_per_minute_max
 
   def initialize
     @host = DEFAULT_HOST
@@ -319,6 +377,25 @@ class CheckLogstash
     self.warning_inflight_events_max = DEFAULT_INFLIGHT_EVENTS_WARNING_MAX
     self.critical_inflight_events_min = DEFAULT_INFLIGHT_EVENTS_CRITICAL_MIN
     self.critical_inflight_events_max = DEFAULT_INFLIGHT_EVENTS_CRITICAL_MAX
+    self.warning_events_in_per_minute_min = DEFAULT_EVENTS_IN_PER_MINUTE_WARNING_MIN
+    self.warning_events_in_per_minute_max = DEFAULT_EVENTS_IN_PER_MINUTE_WARNING_MAX
+    self.critical_events_in_per_minute_min = DEFAULT_EVENTS_IN_PER_MINUTE_CRITICAL_MIN
+    self.critical_events_in_per_minute_max = DEFAULT_EVENTS_IN_PER_MINUTE_CRITICAL_MAX
+    self.warning_events_out_per_minute_min = DEFAULT_EVENTS_OUT_PER_MINUTE_WARNING_MIN
+    self.warning_events_out_per_minute_max = DEFAULT_EVENTS_OUT_PER_MINUTE_WARNING_MAX
+    self.critical_events_out_per_minute_min = DEFAULT_EVENTS_OUT_PER_MINUTE_CRITICAL_MIN
+    self.critical_events_out_per_minute_max = DEFAULT_EVENTS_OUT_PER_MINUTE_CRITICAL_MAX
+    self.temp_file_dir = DEFAULT_TEMP_FILEDIR
+  end
+  
+  def checks_events_in_per_minute?
+    # need the saved state when events in per minute is somehow monitored
+    warning_events_in_per_minute_min || warning_events_in_per_minute_max || critical_events_in_per_minute_min || critical_events_in_per_minute_max
+  end
+
+  def checks_events_out_per_minute?
+    # need the saved state when events out per minute is somehow monitored
+    warning_events_out_per_minute_min || warning_events_out_per_minute_max || critical_events_out_per_minute_min || critical_events_out_per_minute_max
   end
 
   def warning_file_descriptor_percent=(value)
@@ -352,7 +429,20 @@ class CheckLogstash
     end
   end
 
-  def performance_data(result)
+  def load_state
+    return nil unless checks_events_in_per_minute? || checks_events_out_per_minute?
+
+    Result.from_hash(FileHandler.read(temp_file_dir, host, port, pipeline))
+  end
+
+  def calculate_events_per_minute(state, pipeline, current_events, timestamp, direction)
+    saved_events = state.get("#{pipeline}.events_#{direction}")
+    saved_timestamp = state.get("#{pipeline}.timestamp")
+    events_per_minute = (current_events - saved_events) / (timestamp - saved_timestamp) * 60
+    events_per_minute.to_i
+  end
+
+  def performance_data(result, state)
     max_file_descriptors = result.get('process.max_file_descriptors')
     open_file_descriptors = result.get('process.open_file_descriptors')
     percent_file_descriptors = (open_file_descriptors.to_f / max_file_descriptors) * 100
@@ -376,13 +466,38 @@ class CheckLogstash
           events_in = result.get('pipelines.' + named_pipeline[0] + '.events.in').to_i
           events_out = result.get('pipelines.' + named_pipeline[0] + '.events.out').to_i
 
+          if checks_events_in_per_minute? && state.has_key?(named_pipeline[0])
+            events_per_minute = calculate_events_per_minute(state, named_pipeline[0], events_in, result.get_timestamp, "in")
+            inflight_arr.push(PerfData_derived.report('events_in_per_minute_' + named_pipeline[0], events_per_minute, warning_events_in_per_minute_min, warning_events_in_per_minute_max, critical_events_in_per_minute_min, critical_events_in_per_minute_max))
+          end
+
+          if checks_events_out_per_minute? && state.has_key?(named_pipeline[0])
+            events_per_minute = calculate_events_per_minute(state, named_pipeline[0], events_out, result.get_timestamp, "out")
+            inflight_arr.push(PerfData_derived.report('events_out_per_minute_' + named_pipeline[0], events_per_minute, warning_events_out_per_minute_min, warning_events_out_per_minute_max, critical_events_out_per_minute_min, critical_events_out_per_minute_max))
+          end
+
           inflight_events = events_in - events_out
+          inflight_arr.push(PerfData.report_counter(result, 'pipelines.' + named_pipeline[0] + '.events.in', nil, nil, 0, nil))
           inflight_arr.push(PerfData.report_counter(result, 'pipelines.' + named_pipeline[0] + '.events.out', nil, nil, 0, nil))
           inflight_arr.push(PerfData_derived.report('inflight_events_' + named_pipeline[0], inflight_events, warning_inflight_events_min, warning_inflight_events_max, critical_inflight_events_min, critical_inflight_events_max))
         end
       end
     else
-      inflight_events = (result.get('pipeline.events.in') - result.get('pipeline.events.out')).to_i
+      events_in = result.get('pipeline.events.in').to_i
+      events_out = result.get('pipeline.events.out').to_i
+
+      if checks_events_in_per_minute? && state.has_key?('main')
+        events_per_minute = calculate_events_per_minute(state, 'main', events_in, result.get_timestamp, "in")
+        inflight_arr.push(PerfData_derived.report('events_in_per_minute', events_per_minute, warning_events_in_per_minute_min, warning_events_in_per_minute_max, critical_events_in_per_minute_min, critical_events_in_per_minute_max))
+      end
+
+      if checks_events_out_per_minute? && state.has_key?('main')
+        events_per_minute = calculate_events_per_minute(state, 'main', events_out, result.get_timestamp, "out")
+        inflight_arr.push(PerfData_derived.report('events_out_per_minute', events_per_minute, warning_events_out_per_minute_min, warning_events_out_per_minute_max, critical_events_out_per_minute_min, critical_events_out_per_minute_max))
+      end
+
+      inflight_events = events_in - events_out
+      inflight_arr.push(PerfData.report_counter(result, 'pipeline.events.in', nil, nil, 0, nil))
       inflight_arr.push(PerfData.report_counter(result, 'pipeline.events.out', nil, nil, 0, nil))
       inflight_arr.push(PerfData_derived.report('inflight_events', inflight_events, warning_inflight_events_min, warning_inflight_events_max, critical_inflight_events_min, critical_inflight_events_max))
     end
@@ -393,14 +508,50 @@ class CheckLogstash
 
   # the reports are defined below, call them here
 
-  def health(result)
+  def health(result, state)
     [
       file_descriptor_health(result),
       heap_health(result),
       inflight_events_health(result),
       config_reload_health(result),
-      cpu_usage_health(result)
+      cpu_usage_health(result),
+      events_per_minute_health(checks_events_in_per_minute?, "in", result, state, 
+        warning_events_in_per_minute_min, 
+        warning_events_in_per_minute_max, 
+        critical_events_in_per_minute_min, 
+        critical_events_in_per_minute_max),
+      events_per_minute_health(checks_events_out_per_minute?, "out", result, state, 
+        warning_events_out_per_minute_min, 
+        warning_events_out_per_minute_max, 
+        critical_events_out_per_minute_min, 
+        critical_events_out_per_minute_max)
     ]
+  end
+
+  def save_events_state(result)
+    return unless checks_events_in_per_minute? ||  checks_events_out_per_minute?
+
+    stats_to_save = {}
+
+    # Since version 6.0.0 it's possible to define multiple pipelines and give them a name.
+    # This goes over all pipelines and compiles all events into one string.
+    if Gem::Version.new(result.get('version')) >= Gem::Version.new('6.0.0')
+      result.get('pipelines').each do |named_pipeline|
+        name = named_pipeline[0]
+        next if name == ".monitoring-logstash"
+       
+        events_in = result.get("pipelines.#{name}.events.in").to_i
+        events_out = result.get("pipelines.#{name}.events.out").to_i
+        stats_to_save[name] = {events_in: events_in, events_out: events_out, timestamp: result.get_timestamp}
+      end
+    # For versions older 6.0.0 we use the old method (unchanged)
+    else
+      events_in = result.get('pipeline.events.in')
+      events_out = result.get('pipeline.events.out')
+      stats_to_save['main'] = {events_in: events_in, events_out: events_out, timestamp: result.get_timestamp}
+    end
+
+    FileHandler.save(temp_file_dir, host, port, pipeline, stats_to_save)
   end
 
   # reports for various performance data including threshold checks
@@ -436,6 +587,70 @@ class CheckLogstash
       Warning.new(heap_report)
     else
       OK.new(heap_report)
+    end
+  end
+
+  def events_per_minute_health(checks_event, direction, result, state, warn_min, warn_max, crit_min, crit_max)
+    return unless checks_event
+
+    # Since version 6.0.0 it's possible to define multiple pipelines and give them a name.
+    # This goes over all pipelines and compiles all events into one string.
+    if Gem::Version.new(result.get('version')) >= Gem::Version.new('6.0.0')
+      events_report = "Events #{direction} per minute:"
+
+      warn_counter = 0
+      critical_counter = 0
+
+      result.get('pipelines').each do |named_pipeline|
+        name = named_pipeline[0]
+        next if name == ".monitoring-logstash"
+        next(events_report += " #{named_pipeline[0]}: Initialized;") unless state.has_key?(name)
+        
+        events = result.get("pipelines.#{name}.events.#{direction}").to_i
+        events_per_minute = calculate_events_per_minute(state, name, events, result.get_timestamp, direction)
+        events_report += " #{name}: #{events_per_minute};"
+
+        if crit_max && crit_max < events_per_minute
+          critical_counter += 1
+        elsif crit_min && crit_min > events_per_minute
+          critical_counter += 1
+        elsif warn_max && warn_max < events_per_minute
+          warn_counter += 1
+        elsif warn_min && warn_min > events_per_minute
+          warn_counter += 1
+        end
+      end
+
+      # If any of the pipelines is above the configured values we throw the highest common alert.
+      # E.g. if pipeline1 is OK, but pipeline2 is CRIT the result will be CRIT.
+      if critical_counter > 0
+        Critical.new(events_report)
+      elsif warn_counter > 0
+        Warning.new(events_report)
+      else
+        OK.new(events_report)
+      end
+    # For versions older 6.0.0 we use the old method (unchanged)
+    else
+      return OK.new("Events #{direction} per minute: Initialized") unless state.has_key?('main')
+  
+      # check if inflight events are outside of threshold
+      # find a way to reuse the already computed inflight events
+      events = result.get("pipeline.events.#{direction}").to_i
+      events_per_minute = calculate_events_per_minute(state, 'main', events, result.get_timestamp, direction)
+      events_report = "Events #{direction} per minute: #{events_per_minute}"
+
+      if crit_max && crit_max < events_per_minute
+        Critical.new(events_report)
+      elsif crit_min && crit_min > events_per_minute
+        Critical.new(events_report)
+      elsif warn_max && warn_max < events_per_minute
+        Warning.new(events_report)
+      elsif warn_min && warn_min > events_per_minute
+        Warning.new(events_report)
+      else
+        OK.new(events_report)
+      end
     end
   end
 
