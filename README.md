@@ -12,6 +12,7 @@ A monitoring plugin for Icinga (2), Nagios, Shinken, Naemon, etc. to check the L
 
     -H HOST                          Logstash host
     -p, --hostname PORT              Logstash API port
+    -P, --pipeline PIPELINE          Pipeline to monitor, uses all pipelines when not set
         --file-descriptor-threshold-warn WARN
                                      The percentage relative to the process file descriptor limit on which to be a warning result.
         --file-descriptor-threshold-crit CRIT
@@ -24,8 +25,17 @@ A monitoring plugin for Icinga (2), Nagios, Shinken, Naemon, etc. to check the L
                                      The percentage of CPU usage on which to be a warning result.
         --cpu-usage-threshold-crit CRIT
                                      The percentage of CPU usage on which to be a critical result.
+        --temp-filedir NAME          Directory to use for the temporary state file. Only used when one of the events-per-minute metrics is used. Defaults to /tmp
         --inflight-events-warn WARN  Threshold for inflight events to be a warning result. Use min:max for a range.
         --inflight-events-crit CRIT  Threshold for inflight events to be a critical result. Use min:max for a range.
+        --events-in-per-minute-warn WARN
+                                     Threshold for the number of ingoing events per minute to be a warning. Use min:max for a range.
+        --events-in-per-minute-crit CRIT
+                                     Threshold for the number of ingoing events per minute to be critical. Use min:max for a range.
+        --events-out-per-minute-warn WARN
+                                     Threshold for the number of outgoing events per minute to be a warning. Use min:max for a range.
+        --events-out-per-minute-crit CRIT
+                                     Threshold for the number of outgoing events per minute to be critical. Use min:max for a range.
     -h, --help                       Show this message
 
 
@@ -40,6 +50,20 @@ A monitoring plugin for Icinga (2), Nagios, Shinken, Naemon, etc. to check the L
 or
 
     ./check_logstash.rb -H 127.0.0.1 --inflight-events-warn 5 --inflight-events-crit 1:10
+
+### Checking only a single pipeline
+    Starting with Logstash 6.0, it is possible to use multiple pipelines. If you just want to monitor a single pipeline (e.g. You want to use independent checks for each pipleine) you can use the -P or the --pipeline parameter:
+
+    ./check_logstash.rb -H [logstashhost] -P [pipeline_name]
+
+### Checking events in/out per minute
+    It is also possible to check the events in/out independently. This plugin uses a temporary file for this purpose, which is saved in the /tmp folder. The location can be changed using the --temp-filedir option. Make sure that the check can write to the chosen folder. The file name uses the following pattern:
+
+    check_logstash_#{host}_#{port}_#{pipeline}_events_state.tmp
+
+    If no specific pipeline is selected, "all" is used as the pipeline name. Note that the file is **not** created/read when no events in/out metrics are selected via the command line options. This plugin saves the current events in/out states with a timestamp in this file and on each invocation, the values are read and the current events in/out per minute metrics are calculated. Afterwards, the new state is saved in the file.
+
+    The first invocation of this plugin with events in/out monitoring initiates the temporary file, so the corresponding metrics are only shown on the next invocation.
 
 ## Sample Output ##
 
@@ -56,6 +80,27 @@ or
     CRITICAL: Inflight events: 0
     OK: Heap usage at 16.00% (352959904 out of 2077753344 bytes in use)
     OK: Open file descriptors at 1.12%. (46 out of 4096 file descriptors are open)
+
+### With events in/out per minute set ###
+
+    OK - Logstash seems to be doing fine. | process.cpu.percent=0%;;;0;100 jvm.mem.heap_used_percent=46%;70;80;0;100 jvm.threads.count=38;;;0; process.open_file_descriptors=128;891225;996075;0;1048576 events_in_per_minute_main=2070;1:;1: events_out_per_minute_main=2069;1:;1: pipelines.main.events.in=236178654c;;;0; pipelines.main.events.out=236178650c;;;0; inflight_events_main=4;;
+    OK: Events out per minute: main: 2069;
+    OK: Events in per minute: main: 2070;
+    OK: CPU usage in percent: 0
+    OK: Config reload syntax check: main: OK;
+    OK: Inflight events: main: 4;
+    OK: Heap usage at 46.00% (486260792 out of 1038876672 bytes in use)
+    OK: Open file descriptors at 0.01%. (128 out of 1048576 file descriptors are open)
+
+## With events in/out per minute set and with two pipelines ###
+
+    CRITICAL - Logstash is unhealthy - CRITICAL: Events in per minute: PipelineOne: 2497; PipelineTwo: 0; | process.cpu.percent=11%;;;0;100 jvm.mem.heap_used_percent=70%;70;80;0;100 jvm.threads.count=592;;;0; process.open_file_descriptors=526;3400;3800;0;4096 events_in_per_minute_PipelineOne=2497;1:;1: events_out_per_minute_PipelineOne=2479;1:;1: pipelines.PipelineOne.events.in=23289504c;;;0; pipelines.PipelineOne.events.out=23289493c;;;0; inflight_events_PipelineOne=11;; events_in_per_minute_PipelineTwo=0;1:;1: events_out_per_minute_PipelineTwo=0;1:;1: pipelines.PipelineTwo.events.in=6606c;;;0; pipelines.PipelineTwo.events.out=6606c;;;0; inflight_events_PipelineTwo=0;; 
+    CRITICAL: Events out per minute: PipelineOne: 2479; PipelineTwo: 0;
+    CRITICAL: Events in per minute: PipelineOne: 2497; PipelineTwo: 0; 
+    OK: CPU usage in percent: 11
+    OK: Config reload syntax check: PipelineOne: OK; PipelineTwo: 
+    OK: Heap usage at 70.00% (736537928 out of 1037959168 bytes in use)
+    OK: Open file descriptors at 12.84%. (526 out of 4096 file descriptors are open)
 
 ## Finding viable thresholds ##
 
@@ -80,10 +125,15 @@ There are some default values defined in the plugin. Some values are merely put 
 
 ### Optionally checked ###
 
+* `--pipeline`
 * `--cpu-usage-threshold-warn`
 * `--cpu-usage-threshold-crit`
 * `--inflight-events-warn`
 * `--inflight-events-crit`
+* `--events-in-per-minute-warn`
+* `--events-in-per-minute-crit`
+* `--events-out-per-minute-warn`
+* `--events-out-per-minute-crit`
 
 ## Building ##
 

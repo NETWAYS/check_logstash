@@ -3,7 +3,7 @@
 # File : check_logstash
 # Author : Thomas Widhalm, Netways
 # E-Mail: thomas.widhalm@netways.de
-# Date : 11/04/2019
+# Date : 18/07/2022
 #
 # Version: 0.8.0-0
 #
