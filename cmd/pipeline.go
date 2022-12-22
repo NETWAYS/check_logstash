@@ -126,6 +126,12 @@ var pipelineCmd = &cobra.Command{
 				Warn:  thresholds.inflightEventsWarn,
 				Crit:  thresholds.inflightEventsCrit,
 				Value: inflightEvents})
+			perfList.Add(&perfdata.Perfdata{
+				Label: fmt.Sprintf("pipelines.%s.reloads.failures", name),
+				Value: pipe.Reloads.Failures})
+			perfList.Add(&perfdata.Perfdata{
+				Label: fmt.Sprintf("pipelines.%s.reloads.successes", name),
+				Value: pipe.Reloads.Successes})
 		}
 
 		// Validate the various subchecks and use the worst state as return code
