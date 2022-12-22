@@ -1,0 +1,6 @@
+.idea
+check_logstash
+vendor/
+tmp/
+coverage.html
+coverage.out

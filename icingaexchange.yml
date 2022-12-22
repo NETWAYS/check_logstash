@@ -7,47 +7,45 @@ target: Log
 type: Plugin
 license: gplv3
 releases:
-  -
-    name: 0.1
+  - name: 0.1
     description: "0.1 Release"
     files:
-      -
-        name: check_logstash.rb
+      - name: check_logstash.rb
         url: "file:///check_logstash.rb"
         description: "First alpha release"
         checksum: 654ecd408e0c241b891b132686685e6d
-  -
-    name: 0.3
+  - name: 0.3
     description: "0.3 Release"
     files:
-      -
-        name: check_logstash.rb
+      - name: check_logstash.rb
         url: "file:///check_logstash.rb"
         description: "First working alpha"
         checksum: 35c12905504fad1ba9de6a0fe6a3e8d4
-  -
-    name: 0.4
+  - name: 0.4
     description: "0.4 Release"
     files:
-      -
-        name: check_logstash.rb
+      - name: check_logstash.rb
         url: "file:///check_logstash.rb"
         description: "alpha with inflight events"
         checksum: 732bb57f40650b5dc2595a2f96a67304
-  -
-    name: 0.5
+  - name: 0.5
     description: "0.5 Release"
     files:
-      -
-        name: check_logstash.rb
+      - name: check_logstash.rb
         url: "file:///check_logstash.rb"
         description: "beta, working with Logstash 5.0 release"
         checksum: b34879f79bbcd20b7c08918d21417d77
-    name: 0.6
+  - name: 0.6
     description: "0.6 Release"
     files:
-      -
-        name: check_logstash.rb
+      - name: check_logstash.rb
         url: "file:///check_logstash.rb"
         description: "stable, working with first release of Logstash 5.0"
         checksum: 6883b39f317eeb14d229be3a0bb85878
+  - name: 0.8.0
+    description: "0.8.0 Release"
+    files:
+      - name: check_logstash
+        url: "file:///check_logstash"
+        description: "Reimplementation in Golang"
+        checksum: 0e240011dc66e3e87b6a0f255eed5fbc
