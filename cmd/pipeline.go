@@ -35,12 +35,14 @@ func parsePipeThresholds(config PipelineConfig) (PipelineThreshold, error) {
 	if err != nil {
 		return t, err
 	}
+
 	t.inflightEventsWarn = inflightEventsWarn
 
 	inflightEventsCrit, err := check.ParseThreshold(config.InflightEventsCrit)
 	if err != nil {
 		return t, err
 	}
+
 	t.inflightEventsCrit = inflightEventsCrit
 
 	return t, nil
@@ -169,8 +171,8 @@ func init() {
 	fs.StringVar(&cliPipelineConfig.InflightEventsCrit, "inflight-events-crit", "",
 		"Critical threshold for inflight events to be a critical result. Use min:max for a range.")
 
-	pipelineCmd.MarkFlagRequired("inflight-events-warn")
-	pipelineCmd.MarkFlagRequired("inflight-events-crit")
+	_ = pipelineCmd.MarkFlagRequired("inflight-events-warn")
+	_ = pipelineCmd.MarkFlagRequired("inflight-events-crit")
 
 	fs.SortFlags = false
 }

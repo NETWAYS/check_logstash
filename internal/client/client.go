@@ -14,6 +14,7 @@ func NewClient(url string, rt http.RoundTripper) *Client {
 	c := &http.Client{
 		Transport: rt,
 	}
+
 	return &Client{
 		Url:    url,
 		Client: *c,

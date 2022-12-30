@@ -36,19 +36,20 @@ var cliHealthConfig HealthConfig
 
 func parseHealthThresholds(config HealthConfig) (HealthThreshold, error) {
 	// Parses the CLI parameters
-
 	var t HealthThreshold
 	// File Descriptors
 	fileDescThresWarn, err := check.ParseThreshold(config.FileDescThresWarning)
 	if err != nil {
 		return t, err
 	}
+
 	t.fileDescThresWarn = fileDescThresWarn
 
 	fileDescThresCrit, err := check.ParseThreshold(config.FileDescThresCritical)
 	if err != nil {
 		return t, err
 	}
+
 	t.fileDescThresCrit = fileDescThresCrit
 
 	// Heap Usage
@@ -56,12 +57,14 @@ func parseHealthThresholds(config HealthConfig) (HealthThreshold, error) {
 	if err != nil {
 		return t, err
 	}
+
 	t.heapUseThresWarn = heapUseThresWarn
 
 	heapUseThresCrit, err := check.ParseThreshold(config.HeapUseThresCritical)
 	if err != nil {
 		return t, err
 	}
+
 	t.heapUseThresCrit = heapUseThresCrit
 
 	// CPU Usage
@@ -69,19 +72,21 @@ func parseHealthThresholds(config HealthConfig) (HealthThreshold, error) {
 	if err != nil {
 		return t, err
 	}
+
 	t.cpuUseThresWarn = cpuUseThresWarn
 
 	cpuUseThresCrit, err := check.ParseThreshold(config.CPUUseThresCritical)
 	if err != nil {
 		return t, err
 	}
+
 	t.cpuUseThresCrit = cpuUseThresCrit
+
 	return t, nil
 }
 
 func generatePerfdata(stat logstash.Stat, thres HealthThreshold) perfdata.PerfdataList {
 	// Generates the Perfdata from the results and thresholds
-
 	var l perfdata.PerfdataList
 
 	l.Add(&perfdata.Perfdata{

@@ -92,8 +92,11 @@ func (c *Config) NewClient() *client.Client {
 		if len(s) != 2 {
 			check.ExitError(fmt.Errorf("Specify the user name and password for server authentication <user:password>"))
 		}
+
 		var u string = s[0]
+
 		var p config.Secret = config.Secret(s[1])
+
 		rt = config.NewBasicAuthRoundTripper(u, p, "", rt)
 	}
 
