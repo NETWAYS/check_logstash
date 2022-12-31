@@ -1,0 +1,32 @@
+run:
+  timeout: 5m
+  skip-files:
+    - '(.+)_test\.go'
+    - 'internal/config/http_config.go'
+    - 'internal/config/config.go'
+
+linters:
+  disable-all: false
+  enable:
+    - funlen
+    - dogsled
+    - dupl
+    # - lll
+    - whitespace
+    - wsl
+    - exportloopref
+  disable:
+    - scopelint
+    - bodyclose
+    - contextcheck
+    - nilerr
+    - noctx
+    - rowserrcheck
+    - sqlclosecheck
+    - structcheck
+    - unparam
+  presets:
+    - bugs
+    - unused
+    # - style
+  fast: false

@@ -1,92 +1,102 @@
-# check_logstash #
+# check_logstash
 
-[![Rake](https://github.com/NETWAYS/check_logstash/workflows/Rake%20Tests/badge.svg)](https://github.com/NETWAYS/check_logstash/actions?query=workflow%3A%22Rake+Tests%22) [![Acceptance Tests](https://github.com/NETWAYS/check_logstash/workflows/Acceptance%20Tests/badge.svg)](https://github.com/NETWAYS/check_logstash/actions?query=workflow%3A%22Acceptance+Tests%22)
+An Icinga check plugin to check Logstash.
 
-A monitoring plugin for Icinga (2), Nagios, Shinken, Naemon, etc. to check the Logstash API (Logstash v.5+)
+## Usage
 
-**A word of warning** Be sure to read the configuration check part of this readme since there is a problem with this feature in past releases of Logstash.
+```bash
+Usage:
+  check_logstash [flags]
+  check_logstash [command]
 
-## Usage ##
+Available Commands:
+  health      Checks the health of the Logstash server
+  pipeline    Checks the status of the Logstash Pipelines
 
-### Options ###
+Flags:
+  -H, --hostname string    Hostname of the Logstash server (default "localhost")
+  -p, --port int           Port of the Logstash server (default 9600)
+  -s, --secure             Use a HTTPS connection
+  -i, --insecure           Skip the verification of the server's TLS certificate
+  -b, --bearer string      Specify the Bearer Token for server authentication
+  -u, --user string        Specify the user name and password for server authentication <user:password>
+      --ca-file string     Specify the CA File for TLS authentication
+      --cert-file string   Specify the Certificate File for TLS authentication
+      --key-file string    Specify the Key File for TLS authentication
+  -t, --timeout int        Timeout in seconds for the CheckPlugin (default 30)
+  -h, --help               help for check_logstash
+  -v, --version            version for check_logstash
+```
 
-    -H HOST                          Logstash host
-    -p, --hostname PORT              Logstash API port
-        --file-descriptor-threshold-warn WARN
-                                     The percentage relative to the process file descriptor limit on which to be a warning result.
-        --file-descriptor-threshold-crit CRIT
-                                     The percentage relative to the process file descriptor limit on which to be a critical result.
-        --heap-usage-threshold-warn WARN
-                                     The percentage relative to the heap size limit on which to be a warning result.
-        --heap-usage-threshold-crit CRIT
-                                     The percentage relative to the heap size limit on which to be a critical result.
-        --cpu-usage-threshold-warn WARN
-                                     The percentage of CPU usage on which to be a warning result.
-        --cpu-usage-threshold-crit CRIT
-                                     The percentage of CPU usage on which to be a critical result.
-        --inflight-events-warn WARN  Threshold for inflight events to be a warning result. Use min:max for a range.
-        --inflight-events-crit CRIT  Threshold for inflight events to be a critical result. Use min:max for a range.
-    -h, --help                       Show this message
+### Health
+
+Checks the health status of the Logstash server.
+
+```bash
+Usage:
+  check_logstash health [flags]
+
+Examples:
+
+	$ check_logstash health --hostname 'localhost' --port 8888 --insecure
+	OK - Logstash is healthy | status=green process.cpu.percent=0;0.5;3;0;100
+	 \_[OK] Heap usage at 12.00%
+	 \_[OK] Open file descriptors at 12.00%
+	 \_[OK] CPU usage at 5.00%
+
+	$ check_logstash -p 9600 health --cpu-usage-threshold-warn 50 --cpu-usage-threshold-crit 75
+	WARNING - CPU usage at 55.00%
+	 \_[OK] Heap usage at 12.00%
+	 \_[OK] Open file descriptors at 12.00%
+	 \_[WARNING] CPU usage at 55.00%
+
+Flags:
+      --file-descriptor-threshold-warn string   The percentage relative to the process file descriptor limit on which to be a warning result (default "100")
+      --file-descriptor-threshold-crit string   The percentage relative to the process file descriptor limit on which to be a critical result (default "100")
+      --heap-usage-threshold-warn string        The percentage relative to the heap size limit on which to be a warning result (default "70")
+      --heap-usage-threshold-crit string        The percentage relative to the heap size limit on which to be a critical result (default "80")
+      --cpu-usage-threshold-warn string         The percentage of CPU usage on which to be a warning result (default "100")
+      --cpu-usage-threshold-crit string         The percentage of CPU usage on which to be a critical result (default "100")
+  -h, --help                                    help for health
+```
+
+### Pipeline
+
+Checks the status of Logstash pipelines.
+
+```bash
+Usage:
+  check_logstash pipeline [flags]
+
+Examples:
+
+	$ check_logstash pipeline --inflight-events-warn 5 --inflight-events-crit 10
+	WARNING - Inflight events
+	 \_[WARNING] inflight_events_example-input:9;
+	 \_[OK] inflight_events_example-default-connector:4
+
+	$ check_logstash pipeline --inflight-events-warn 5 --inflight-events-crit 10 --pipeline example
+	CRITICAL - Inflight events
+	 \_[CRITICAL] inflight_events_example:15
+
+Flags:
+  -P, --pipeline string               Pipeline Name (default "/")
+      --inflight-events-warn string   Warning threshold for inflight events to be a warning result. Use min:max for a range.
+      --inflight-events-crit string   Critical threshold for inflight events to be a critical result. Use min:max for a range.
+  -h, --help                          help for pipeline
+```
 
 
-### Using default values ###
+## License
 
-    ./check_logstash.rb -H [logstashhost]
-    
-### Using your own thresholds ###
+Copyright (c) 2022 [NETWAYS GmbH](mailto:info@netways.de)
 
-    ./check_logstash.rb -H 127.0.0.1 --file-descriptor-threshold-warn 40 --file-descriptor-threshold-crit 50 --heap-usage-threshold-warn 10 --heap-usage-threshold-crit 20
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+License as published by the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-or
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-    ./check_logstash.rb -H 127.0.0.1 --inflight-events-warn 5 --inflight-events-crit 1:10
-
-## Sample Output ##
-
-### With default values ###
-
-    OK - Logstash looking healthy. | process.cpu.percent=0;;;0;100 mem.heap_used_percent=18;70;80;0;100 jvm.threads.count=23;;;0; process.open_file_descriptors=46;3400;3800;0;4096 pipeline.events.out=166c;;;0; inflight_events=0;;;0;
-    OK: Inflight events: 0
-    OK: Heap usage at 18.00% (382710568 out of 2077753344 bytes in use)
-    OK: Open file descriptors at 1.12%. (46 out of 4096 file descriptors are open)
-
-### With thresholds set ###
-
-    CRITICAL - Logstash is unhealthy - CRITICAL: Inflight events: 0 | process.cpu.percent=0;;;0;100 mem.heap_used_percent=16;70;80;0;100 jvm.threads.count=23;;;0; process.open_file_descriptors=46;3400;3800;0;4096 pipeline.events.out=164c;;;0; inflight_events=0;5;10;0;
-    CRITICAL: Inflight events: 0
-    OK: Heap usage at 16.00% (352959904 out of 2077753344 bytes in use)
-    OK: Open file descriptors at 1.12%. (46 out of 4096 file descriptors are open)
-
-## Finding viable thresholds ##
-
-To set your thresholds for inflight events to a sensible value use baselining. Don't set thresholds from the beginning but let Graphite or other graphers create graphs for inflight events. Just add some percent to what Logstash usually processes and set this as threshold. Or use the `generator` plugin to put as many events through your Elastic stack as possible. Use some percent (e.g. 90%) from this maximum as a threshold. Keep in mind that changing your configuration might change the maximum inflight events.
-
-### Configuration check ###
-
-Logstash 5.0 can automatically reload changed configuration from disk. This plugin checks if the last reload succeeded or failed. Unfortunately the first release of Logstash 5.0 does not provide a way to show that it recovered from an invalid configuration. If you had an error, the plugin will still show that there is a problem with the configuration even when this is already fixed. There is already an issue with Logstash pending to fix this behaviour: https://github.com/elastic/logstash/issues/6149
-
-## Default values ##
-
-There are some default values defined in the plugin. Some values are merely put out as performance data and some are normally used for performance data but can be checked against thresholds.
-
-### Checks with defaults ###
-
-* `-H`: 127.0.0.1
-* `-p`: 9600
-* `--file-descriptor-threshold-warn` : 85
-* `--file-descriptor-threshold-warn` : 95
-* `--heap-usage-threshold-warn` : 70
-* `--heap-usage-threshold-warn` : 80
-
-### Optionally checked ###
-
-* `--cpu-usage-threshold-warn`
-* `--cpu-usage-threshold-crit`
-* `--inflight-events-warn`
-* `--inflight-events-crit`
-
-## Building ##
-
-While `check_logstash` is the finished plugin you can use, you might want to change something and rebuild the script.
-
-Simply issue the `rake` command (if you have Rake installed) and it will run tests (and rubocop when all cops are pleased) and create the script from the library files. *Don't change the `check_logstash` file since it will be overwritten by Rake, change the files in `lib/` instead.
+You should have received a copy of the GNU General Public License along with this program. If not,
+see [gnu.org/licenses](https://www.gnu.org/licenses/).
