@@ -1,0 +1,39 @@
+# See documentation at https://goreleaser.com
+before:
+  hooks:
+    - go mod download
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goarch:
+      - amd64
+    goos:
+      - linux
+      - windows
+      - darwin
+    ldflags:
+      - >-
+        -s -w -X main.version={{.Version}}
+        -X main.commit={{.Commit}}
+        -X main.date={{.CommitDate}}
+release:
+  github:
+    owner: NETWAYS
+    name: check_cloud_aws
+archives:
+  - format: binary
+    replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: '{{ .Tag }}-SNAPSHOT-{{.ShortCommit}}'
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
