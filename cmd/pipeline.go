@@ -119,9 +119,11 @@ var pipelineCmd = &cobra.Command{
 			// Generate perfdata for each event
 			perfList.Add(&perfdata.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.events.in", name),
+				Uom:   "c",
 				Value: pipe.Events.In})
 			perfList.Add(&perfdata.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.events.out", name),
+				Uom:   "c",
 				Value: pipe.Events.Out})
 			perfList.Add(&perfdata.Perfdata{
 				Label: fmt.Sprintf("inflight_events_%s", name),
