@@ -19,7 +19,7 @@ builds:
 release:
   github:
     owner: NETWAYS
-    name: check_cloud_aws
+    name: check_logstash
 archives:
   - format: binary
     replacements:
