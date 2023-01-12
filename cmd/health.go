@@ -95,12 +95,14 @@ func generatePerfdata(stat logstash.Stat, thres HealthThreshold) perfdata.Perfda
 	l.Add(&perfdata.Perfdata{
 		Label: "process.cpu.percent",
 		Value: stat.Process.CPU.Percent,
+		Uom:   "%",
 		Warn:  thres.cpuUseThresWarn,
 		Crit:  thres.cpuUseThresCrit,
 		Min:   0,
 		Max:   100})
 	l.Add(&perfdata.Perfdata{
 		Label: "jvm.mem.heap_used_percent",
+		Uom:   "%",
 		Value: stat.Jvm.Mem.HeapUsedPercent,
 		Warn:  thres.heapUseThresWarn,
 		Crit:  thres.heapUseThresCrit,
