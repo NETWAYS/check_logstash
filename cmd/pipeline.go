@@ -66,7 +66,6 @@ var pipelineCmd = &cobra.Command{
 			output     string
 			summary    string
 			rc         int
-			states     []int
 			pp         logstash.Pipeline
 			thresholds PipelineThreshold
 			perfList   perfdata.PerfdataList
@@ -99,6 +98,8 @@ var pipelineCmd = &cobra.Command{
 		if err != nil {
 			check.ExitError(err)
 		}
+
+		states := make([]int, 0, len(pp.Pipelines))
 
 		// Check status for each pipeline
 		for name, pipe := range pp.Pipelines {

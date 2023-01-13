@@ -144,13 +144,15 @@ var healthCmd = &cobra.Command{
 			output     string
 			summary    string
 			rc         int
-			states     []int
 			stat       logstash.Stat
 			thresholds HealthThreshold
 			fdstatus   string
 			heapstatus string
 			cpustatus  string
 		)
+
+		// status + fdstatus + heapstatus + cpustatus = 4
+		states := make([]int, 0, 4)
 
 		// Parse the thresholds into a central var since we need them later
 		thresholds, err := parseHealthThresholds(cliHealthConfig)
