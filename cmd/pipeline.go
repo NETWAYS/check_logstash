@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // To store the CLI parameters
@@ -103,9 +104,10 @@ var pipelineCmd = &cobra.Command{
 
 		// Check status for each pipeline
 		for name, pipe := range pp.Pipelines {
-			inflightEvents := pipe.Events.In - pipe.Events.Out
-
 			summary += "\n \\_"
+
+			// Check Inflight Events
+			inflightEvents := pipe.Events.In - pipe.Events.Out
 			if thresholds.inflightEventsCrit.DoesViolate(float64(inflightEvents)) {
 				states = append(states, check.Critical)
 				summary += fmt.Sprintf("[CRITICAL] inflight_events_%s:%d;", name, inflightEvents)
@@ -115,6 +117,20 @@ var pipelineCmd = &cobra.Command{
 			} else {
 				states = append(states, check.OK)
 				summary += fmt.Sprintf("[OK] inflight_events_%s:%d;", name, inflightEvents)
+			}
+
+			// Check Reload Timestamp
+			if pipe.Reloads.LastSuccessTime != "" {
+				// We could do the parsing during the unmarshall
+				lastSuccessReload, _ := time.Parse(time.RFC3339, pipe.Reloads.LastSuccessTime)
+				lastFailureReload, _ := time.Parse(time.RFC3339, pipe.Reloads.LastFailureTime)
+				if lastFailureReload.After(lastSuccessReload) {
+					summary += "\n  \\_"
+					// TODO, can I determine how many criticals we gonna append,
+					// so that we can initialize the Slice with the correct capacity?
+					states = append(states, check.Critical)
+					summary += fmt.Sprintf("[CRITICAL] Reload configuration failed %s for %s;", name, lastFailureReload)
+				}
 			}
 
 			// Generate perfdata for each event
@@ -143,16 +159,16 @@ var pipelineCmd = &cobra.Command{
 		switch result.WorstState(states...) {
 		case 0:
 			rc = check.OK
-			output = "Inflight events alright"
+			output = "Pipeline alright"
 		case 1:
 			rc = check.Warning
-			output = "Inflight events may not be alright"
+			output = "Pipeline may not be alright"
 		case 2:
 			rc = check.Critical
-			output = "Inflight events not alright"
+			output = "Pipeline events not alright"
 		default:
 			rc = check.Unknown
-			output = "Inflight events status unknown"
+			output = "Pipeline events status unknown"
 		}
 
 		check.ExitRaw(rc, output, summary, "|", perfList.String())
