@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // To store the CLI parameters
@@ -142,7 +143,6 @@ var healthCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var (
 			output     string
-			summary    string
 			rc         int
 			stat       logstash.Stat
 			thresholds HealthThreshold
@@ -247,11 +247,12 @@ var healthCmd = &cobra.Command{
 		}
 
 		// Generate summary for subchecks
-		summary += fmt.Sprintf("\n \\_[%s] Heap usage at %.2f%%", heapstatus, stat.Jvm.Mem.HeapUsedPercent)
-		summary += fmt.Sprintf("\n \\_[%s] Open file descriptors at %.2f%%", fdstatus, fileDescriptorsPercent)
-		summary += fmt.Sprintf("\n \\_[%s] CPU usage at %.2f%%", cpustatus, stat.Process.CPU.Percent)
+		var summary strings.Builder
+		summary.WriteString(fmt.Sprintf("\n \\_[%s] Heap usage at %.2f%%", heapstatus, stat.Jvm.Mem.HeapUsedPercent))
+		summary.WriteString(fmt.Sprintf("\n \\_[%s] Open file descriptors at %.2f%%", fdstatus, fileDescriptorsPercent))
+		summary.WriteString(fmt.Sprintf("\n \\_[%s] CPU usage at %.2f%%", cpustatus, stat.Process.CPU.Percent))
 
-		check.ExitRaw(rc, output, summary, "|", perfList.String())
+		check.ExitRaw(rc, output, summary.String(), "|", perfList.String())
 	},
 }
 
