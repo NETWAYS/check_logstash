@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // To store the CLI parameters
@@ -64,7 +65,6 @@ var pipelineCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var (
 			output     string
-			summary    string
 			rc         int
 			pp         logstash.Pipeline
 			thresholds PipelineThreshold
@@ -102,19 +102,21 @@ var pipelineCmd = &cobra.Command{
 		states := make([]int, 0, len(pp.Pipelines))
 
 		// Check status for each pipeline
+		var summary strings.Builder
+
 		for name, pipe := range pp.Pipelines {
 			inflightEvents := pipe.Events.In - pipe.Events.Out
 
-			summary += "\n \\_"
+			summary.WriteString("\n \\_")
 			if thresholds.inflightEventsCrit.DoesViolate(float64(inflightEvents)) {
 				states = append(states, check.Critical)
-				summary += fmt.Sprintf("[CRITICAL] inflight_events_%s:%d;", name, inflightEvents)
+				summary.WriteString(fmt.Sprintf("[CRITICAL] inflight_events_%s:%d;", name, inflightEvents))
 			} else if thresholds.inflightEventsWarn.DoesViolate(float64(inflightEvents)) {
 				states = append(states, check.Warning)
-				summary += fmt.Sprintf("[WARNING] inflight_events_%s:%d;", name, inflightEvents)
+				summary.WriteString(fmt.Sprintf("[WARNING] inflight_events_%s:%d;", name, inflightEvents))
 			} else {
 				states = append(states, check.OK)
-				summary += fmt.Sprintf("[OK] inflight_events_%s:%d;", name, inflightEvents)
+				summary.WriteString(fmt.Sprintf("[OK] inflight_events_%s:%d;", name, inflightEvents))
 			}
 
 			// Generate perfdata for each event
@@ -155,7 +157,7 @@ var pipelineCmd = &cobra.Command{
 			output = "Inflight events status unknown"
 		}
 
-		check.ExitRaw(rc, output, summary, "|", perfList.String())
+		check.ExitRaw(rc, output, summary.String(), "|", perfList.String())
 	},
 }
 
