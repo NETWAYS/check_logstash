@@ -30,8 +30,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mwitkow/go-conntrack"
-	"golang.org/x/net/http2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 	"gopkg.in/yaml.v2"
@@ -463,119 +461,6 @@ func WithUserAgent(ua string) HTTPClientOption {
 // NewClient returns a http.Client using the specified http.RoundTripper.
 func newClient(rt http.RoundTripper) *http.Client {
 	return &http.Client{Transport: rt}
-}
-
-// NewClientFromConfig returns a new HTTP client configured for the
-// given config.HTTPClientConfig and config.HTTPClientOption.
-// The name is used as go-conntrack metric label.
-func NewClientFromConfig(cfg HTTPClientConfig, name string, optFuncs ...HTTPClientOption) (*http.Client, error) {
-	rt, err := NewRoundTripperFromConfig(cfg, name, optFuncs...)
-	if err != nil {
-		return nil, err
-	}
-	client := newClient(rt)
-	if !cfg.FollowRedirects {
-		client.CheckRedirect = func(*http.Request, []*http.Request) error {
-			return http.ErrUseLastResponse
-		}
-	}
-	return client, nil
-}
-
-// NewRoundTripperFromConfig returns a new HTTP RoundTripper configured for the
-// given config.HTTPClientConfig and config.HTTPClientOption.
-// The name is used as go-conntrack metric label.
-func NewRoundTripperFromConfig(cfg HTTPClientConfig, name string, optFuncs ...HTTPClientOption) (http.RoundTripper, error) {
-	opts := defaultHTTPClientOptions
-	for _, f := range optFuncs {
-		f(&opts)
-	}
-
-	var dialContext func(ctx context.Context, network, addr string) (net.Conn, error)
-
-	if opts.dialContextFunc != nil {
-		dialContext = conntrack.NewDialContextFunc(
-			conntrack.DialWithDialContextFunc((func(context.Context, string, string) (net.Conn, error))(opts.dialContextFunc)),
-			conntrack.DialWithTracing(),
-			conntrack.DialWithName(name))
-	} else {
-		dialContext = conntrack.NewDialContextFunc(
-			conntrack.DialWithTracing(),
-			conntrack.DialWithName(name))
-	}
-
-	newRT := func(tlsConfig *tls.Config) (http.RoundTripper, error) {
-		// The only timeout we care about is the configured scrape timeout.
-		// It is applied on request. So we leave out any timings here.
-		var rt http.RoundTripper = &http.Transport{
-			Proxy:                 http.ProxyURL(cfg.ProxyURL.URL),
-			ProxyConnectHeader:    cfg.ProxyConnectHeader.HTTPHeader(),
-			MaxIdleConns:          20000,
-			MaxIdleConnsPerHost:   1000, // see https://github.com/golang/go/issues/13801
-			DisableKeepAlives:     !opts.keepAlivesEnabled,
-			TLSClientConfig:       tlsConfig,
-			DisableCompression:    true,
-			IdleConnTimeout:       opts.idleConnTimeout,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-			DialContext:           dialContext,
-		}
-		if opts.http2Enabled && cfg.EnableHTTP2 {
-			// HTTP/2 support is golang had many problematic cornercases where
-			// dead connections would be kept and used in connection pools.
-			// https://github.com/golang/go/issues/32388
-			// https://github.com/golang/go/issues/39337
-			// https://github.com/golang/go/issues/39750
-
-			http2t, err := http2.ConfigureTransports(rt.(*http.Transport))
-			if err != nil {
-				return nil, err
-			}
-			http2t.ReadIdleTimeout = time.Minute
-		}
-
-		// If a authorization_credentials is provided, create a round tripper that will set the
-		// Authorization header correctly on each request.
-		if cfg.Authorization != nil && len(cfg.Authorization.Credentials) > 0 {
-			rt = NewAuthorizationCredentialsRoundTripper(cfg.Authorization.Type, cfg.Authorization.Credentials, rt)
-		} else if cfg.Authorization != nil && len(cfg.Authorization.CredentialsFile) > 0 {
-			rt = NewAuthorizationCredentialsFileRoundTripper(cfg.Authorization.Type, cfg.Authorization.CredentialsFile, rt)
-		}
-		// Backwards compatibility, be nice with importers who would not have
-		// called Validate().
-		if len(cfg.BearerToken) > 0 {
-			rt = NewAuthorizationCredentialsRoundTripper("Bearer", cfg.BearerToken, rt)
-		} else if len(cfg.BearerTokenFile) > 0 {
-			rt = NewAuthorizationCredentialsFileRoundTripper("Bearer", cfg.BearerTokenFile, rt)
-		}
-
-		if cfg.BasicAuth != nil {
-			rt = NewBasicAuthRoundTripper(cfg.BasicAuth.Username, cfg.BasicAuth.Password, cfg.BasicAuth.PasswordFile, rt)
-		}
-
-		if cfg.OAuth2 != nil {
-			rt = NewOAuth2RoundTripper(cfg.OAuth2, rt, &opts)
-		}
-
-		if opts.userAgent != "" {
-			rt = NewUserAgentRoundTripper(opts.userAgent, rt)
-		}
-
-		// Return a new configured RoundTripper.
-		return rt, nil
-	}
-
-	tlsConfig, err := NewTLSConfig(&cfg.TLSConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(cfg.TLSConfig.CAFile) == 0 {
-		// No need for a RoundTripper that reloads the CA file automatically.
-		return newRT(tlsConfig)
-	}
-
-	return NewTLSRoundTripper(tlsConfig, cfg.TLSConfig.CAFile, cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile, newRT)
 }
 
 type authorizationCredentialsRoundTripper struct {
