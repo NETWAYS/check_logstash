@@ -17,6 +17,7 @@ builds:
         -X main.commit={{.Commit}}
         -X main.date={{.CommitDate}}
 release:
+  draft: true
   github:
     owner: NETWAYS
     name: check_logstash
