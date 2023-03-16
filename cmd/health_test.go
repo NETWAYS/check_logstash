@@ -29,6 +29,47 @@ type HealthTest struct {
 	expected string
 }
 
+func TestHealthCmd_Logstash6(t *testing.T) {
+	tests := []HealthTest{
+		{
+			name: "version-error",
+			server: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"host":"logstash","version":"foo"}`))
+			})),
+			args:     []string{"run", "../main.go", "health"},
+			expected: "UNKNOWN - Could not determine version",
+		},
+		{
+			name: "health-ok",
+			server: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"host":"logstash","version":"6.8.23","http_address":"0.0.0.0:9600","id":"123","name":"logstash","jvm":{"threads":{"count":1,"peak_count":2},"mem":{},"gc":{},"uptime_in_millis":123},"process":{},"events":{},"pipelines":{"main":{}},"reloads":{"failures":0,"successes":0},"os":{}}`))
+			})),
+			args:     []string{"run", "../main.go", "health"},
+			expected: "OK - Logstash is healthy",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			defer test.server.Close()
+
+			// We need the random Port extracted
+			u, _ := url.Parse(test.server.URL)
+			cmd := exec.Command("go", append(test.args, "--port", u.Port())...)
+			out, _ := cmd.CombinedOutput()
+
+			actual := string(out)
+
+			if !strings.Contains(actual, test.expected) {
+				t.Error("\nActual: ", actual, "\nExpected: ", test.expected)
+			}
+
+		})
+	}
+}
+
 func TestHealthCmd_Logstash7(t *testing.T) {
 	tests := []HealthTest{
 		{

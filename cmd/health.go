@@ -180,6 +180,16 @@ var healthCmd = &cobra.Command{
 			check.ExitError(err)
 		}
 
+		// Enable some backwards compatibility
+		// Can be changed to a switch statement in the future,
+		// when more versions need special cases
+		// For Logstash 6, we assume a parsed JSON response
+		// is enough to declare the instance running, since there
+		// is no status field.
+		if stat.MajorVersion == 6 {
+			stat.Status = "green"
+		}
+
 		// Logstash Health Status
 		switch stat.Status {
 		default:

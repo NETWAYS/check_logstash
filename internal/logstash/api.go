@@ -1,5 +1,12 @@
 package logstash
 
+import (
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"strings"
+)
+
 // https://www.elastic.co/guide/en/logstash/current/node-stats-api.html
 
 type Pipeline struct {
@@ -44,9 +51,40 @@ type JVM struct {
 }
 
 type Stat struct {
-	Host    string  `json:"host"`
-	Version string  `json:"version"`
-	Status  string  `json:"status"`
-	Process Process `json:"process"`
-	Jvm     JVM     `json:"jvm"`
+	Host         string  `json:"host"`
+	Version      string  `json:"version"`
+	Status       string  `json:"status"`
+	Process      Process `json:"process"`
+	Jvm          JVM     `json:"jvm"`
+	MajorVersion int
+}
+
+// Custom Unmarshal since we might want to add or parse
+// further fields in the future. This is simpler to extend and
+// to test here than during the CheckPlugin logic.
+func (s *Stat) UnmarshalJSON(b []byte) error {
+	type Temp Stat
+
+	t := (*Temp)(s)
+
+	err := json.Unmarshal(b, t)
+
+	if err != nil {
+		return err
+	}
+
+	// Could also use some semver package,
+	// but decided against the depedency
+	if s.Version != "" {
+		v := strings.Split(s.Version, ".")
+		majorVersion, convErr := strconv.Atoi(v[0])
+
+		if convErr != nil {
+			return fmt.Errorf("Could not determine version")
+		}
+
+		s.MajorVersion = majorVersion
+	}
+
+	return nil
 }
