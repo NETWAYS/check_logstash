@@ -13,8 +13,10 @@ type Pipeline struct {
 	Host      string `json:"host"`
 	Pipelines map[string]struct {
 		Reloads struct {
-			Successes int `json:"successes"`
-			Failures  int `json:"failures"`
+			LastSuccessTime string `json:"last_success_timestamp"`
+			LastFailureTime string `json:"last_failure_timestamp"`
+			Successes       int    `json:"successes"`
+			Failures        int    `json:"failures"`
 		} `json:"reloads"`
 		Queue struct {
 			Type                string `json:"type"`

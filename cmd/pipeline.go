@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // To store the CLI parameters
@@ -161,8 +162,104 @@ var pipelineCmd = &cobra.Command{
 	},
 }
 
+var pipelineReloadCmd = &cobra.Command{
+	Use:   "reload",
+	Short: "Checks the reload configuration status of the Logstash Pipelines",
+	Long:  `Checks the reload configuration status of the Logstash Pipelines`,
+	Example: `
+	$ check_logstash pipeline reload
+	OK - Configuration successfully reloaded
+	 \_[OK] Configuration successfully reloaded for pipeline Foobar for on 2021-01-01T02:07:14Z
+
+	$ check_logstash pipeline reload --pipeline Example
+	CRITICAL - Configuration reload failed
+	 \_[CRITICAL] Configuration reload for pipeline Example failed on 2021-01-01T02:07:14Z`,
+	Run: func(cmd *cobra.Command, args []string) {
+		var (
+			output string
+			rc     int
+			pp     logstash.Pipeline
+		)
+
+		// Creating an client and connecting to the API
+		c := cliConfig.NewClient()
+		// localhost:9600/_node/stats/pipelines/ will return all Pipelines
+		// localhost:9600/_node/stats/pipelines/foo will return the foo Pipeline
+		u, _ := url.JoinPath(c.Url, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
+		resp, err := c.Client.Get(u)
+
+		if err != nil {
+			check.ExitError(err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			check.ExitError(fmt.Errorf("Could not get %s - Error: %d", u, resp.StatusCode))
+		}
+
+		defer resp.Body.Close()
+		err = json.NewDecoder(resp.Body).Decode(&pp)
+
+		if err != nil {
+			check.ExitError(err)
+		}
+
+		states := make([]int, 0, len(pp.Pipelines))
+
+		// Check the reload configuration status for each pipeline
+		var summary strings.Builder
+
+		for name, pipe := range pp.Pipelines {
+			// Check Reload Timestamp
+			if pipe.Reloads.LastSuccessTime != "" {
+				// We could do the parsing during the unmarshall
+				lastSuccessReload, errSu := time.Parse(time.RFC3339, pipe.Reloads.LastSuccessTime)
+				lastFailureReload, errFa := time.Parse(time.RFC3339, pipe.Reloads.LastFailureTime)
+
+				if errSu != nil || errFa != nil {
+					states = append(states, check.Unknown)
+					summary.WriteString(fmt.Sprintf("[UNKNOWN] Configuration reload for pipeline %s unknown;", name))
+					summary.WriteString("\n  \\_")
+					continue
+				}
+
+				summary.WriteString("\n  \\_")
+				if lastFailureReload.After(lastSuccessReload) {
+					states = append(states, check.Critical)
+					summary.WriteString(fmt.Sprintf("[CRITICAL] Configuration reload for pipeline %s failed on %s;", name, lastFailureReload))
+				} else {
+					states = append(states, check.OK)
+					summary.WriteString(fmt.Sprintf("[OK] Configuration successfully reloaded for pipeline %s for on %s;", name, lastSuccessReload))
+				}
+			}
+		}
+
+		// Validate the various subchecks and use the worst state as return code
+		switch result.WorstState(states...) {
+		case 0:
+			rc = check.OK
+			output = "Configuration successfully reloaded"
+		case 1:
+			rc = check.Warning
+			output = "Configuration reload may not be successful"
+		case 2:
+			rc = check.Critical
+			output = "Configuration reload failed"
+		default:
+			rc = check.Unknown
+			output = "Configuration reload status unknown"
+		}
+
+		check.ExitRaw(rc, output, summary.String())
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(pipelineCmd)
+
+	pipelineReloadCmd.Flags().StringVarP(&cliPipelineConfig.PipelineName, "pipeline", "P", "/",
+		"Pipeline Name")
+
+	pipelineCmd.AddCommand(pipelineReloadCmd)
 
 	fs := pipelineCmd.Flags()
 

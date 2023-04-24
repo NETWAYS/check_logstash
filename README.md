@@ -86,6 +86,28 @@ Flags:
   -h, --help                          help for pipeline
 ```
 
+### Pipeline Reload
+
+Checks the status of Logstash pipelines configuration reload.
+
+```bash
+Usage:
+  check_logstash pipeline reload [flags]
+
+Examples:
+
+	$ check_logstash pipeline reload
+	OK - Configuration successfully reloaded
+	 \_[OK] Configuration successfully reloaded for pipeline Foobar for on 2021-01-01T02:07:14Z
+
+	$ check_logstash pipeline reload --pipeline Example
+	CRITICAL - Configuration reload failed
+	 \_[CRITICAL] Configuration reload for pipeline Example failed on 2021-01-01T02:07:14Z
+
+Flags:
+  -P, --pipeline string               Pipeline Name (default "/")
+  -h, --help                          help for pipeline
+```
 
 ## License
 
