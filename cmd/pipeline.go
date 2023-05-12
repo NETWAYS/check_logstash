@@ -16,15 +16,15 @@ import (
 
 // To store the CLI parameters
 type PipelineConfig struct {
-	PipelineName       string
-	InflightEventsWarn string
-	InflightEventsCrit string
+	PipelineName string
+	Warning      string
+	Critical     string
 }
 
 // To store the parsed CLI parameters
 type PipelineThreshold struct {
-	inflightEventsWarn *check.Threshold
-	inflightEventsCrit *check.Threshold
+	Warning  *check.Threshold
+	Critical *check.Threshold
 }
 
 var cliPipelineConfig PipelineConfig
@@ -33,19 +33,19 @@ func parsePipeThresholds(config PipelineConfig) (PipelineThreshold, error) {
 	// Parses the CLI parameters
 	var t PipelineThreshold
 
-	inflightEventsWarn, err := check.ParseThreshold(config.InflightEventsWarn)
+	warn, err := check.ParseThreshold(config.Warning)
 	if err != nil {
 		return t, err
 	}
 
-	t.inflightEventsWarn = inflightEventsWarn
+	t.Warning = warn
 
-	inflightEventsCrit, err := check.ParseThreshold(config.InflightEventsCrit)
+	crit, err := check.ParseThreshold(config.Critical)
 	if err != nil {
 		return t, err
 	}
 
-	t.inflightEventsCrit = inflightEventsCrit
+	t.Critical = crit
 
 	return t, nil
 }
@@ -109,10 +109,10 @@ var pipelineCmd = &cobra.Command{
 			inflightEvents := pipe.Events.In - pipe.Events.Out
 
 			summary.WriteString("\n \\_")
-			if thresholds.inflightEventsCrit.DoesViolate(float64(inflightEvents)) {
+			if thresholds.Critical.DoesViolate(float64(inflightEvents)) {
 				states = append(states, check.Critical)
 				summary.WriteString(fmt.Sprintf("[CRITICAL] inflight_events_%s:%d;", name, inflightEvents))
-			} else if thresholds.inflightEventsWarn.DoesViolate(float64(inflightEvents)) {
+			} else if thresholds.Warning.DoesViolate(float64(inflightEvents)) {
 				states = append(states, check.Warning)
 				summary.WriteString(fmt.Sprintf("[WARNING] inflight_events_%s:%d;", name, inflightEvents))
 			} else {
@@ -131,8 +131,8 @@ var pipelineCmd = &cobra.Command{
 				Value: pipe.Events.Out})
 			perfList.Add(&perfdata.Perfdata{
 				Label: fmt.Sprintf("inflight_events_%s", name),
-				Warn:  thresholds.inflightEventsWarn,
-				Crit:  thresholds.inflightEventsCrit,
+				Warn:  thresholds.Warning,
+				Crit:  thresholds.Critical,
 				Value: inflightEvents})
 			perfList.Add(&perfdata.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.reloads.failures", name),
@@ -253,13 +253,128 @@ var pipelineReloadCmd = &cobra.Command{
 	},
 }
 
+var pipelineFlowCmd = &cobra.Command{
+	Use:   "flow",
+	Short: "Checks the flow metrics of the Logstash Pipelines",
+	Long:  `Checks the flow metrics of the Logstash Pipelines`,
+	Example: `
+	$ check_logstash pipeline flow --warning 5 --critical 10
+	OK - Flow metrics alright
+	 \_[OK] queue_backpressure_example:0.34;
+
+	$ check_logstash pipeline flow --pipeline example --warning 5 --critical 10
+	CRITICAL - Flow metrics not alright
+	 \_[CRITICAL] queue_backpressure_example:11.23;`,
+	Run: func(cmd *cobra.Command, args []string) {
+		var (
+			output     string
+			rc         int
+			thresholds PipelineThreshold
+			pp         logstash.Pipeline
+			perfList   perfdata.PerfdataList
+		)
+
+		// Parse the thresholds into a central var since we need them later
+		thresholds, err := parsePipeThresholds(cliPipelineConfig)
+		if err != nil {
+			check.ExitError(err)
+		}
+
+		// Creating an client and connecting to the API
+		c := cliConfig.NewClient()
+		// localhost:9600/_node/stats/pipelines/ will return all Pipelines
+		// localhost:9600/_node/stats/pipelines/foo will return the foo Pipeline
+		u, _ := url.JoinPath(c.Url, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
+		resp, err := c.Client.Get(u)
+
+		if err != nil {
+			check.ExitError(err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			check.ExitError(fmt.Errorf("Could not get %s - Error: %d", u, resp.StatusCode))
+		}
+
+		defer resp.Body.Close()
+		err = json.NewDecoder(resp.Body).Decode(&pp)
+
+		if err != nil {
+			check.ExitError(err)
+		}
+
+		states := make([]int, 0, len(pp.Pipelines))
+
+		// Check the flow metrics for each pipeline
+		var summary strings.Builder
+
+		for name, pipe := range pp.Pipelines {
+			summary.WriteString("\n \\_")
+			if thresholds.Critical.DoesViolate(pipe.Flow.QueueBackpressure.Current) {
+				states = append(states, check.Critical)
+				summary.WriteString(fmt.Sprintf("[CRITICAL] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current))
+			} else if thresholds.Warning.DoesViolate(pipe.Flow.QueueBackpressure.Current) {
+				states = append(states, check.Warning)
+				summary.WriteString(fmt.Sprintf("[WARNING] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current))
+			} else {
+				states = append(states, check.OK)
+				summary.WriteString(fmt.Sprintf("[OK] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current))
+			}
+
+			// Generate perfdata for each event
+			perfList.Add(&perfdata.Perfdata{
+				Label: fmt.Sprintf("pipelines.queue_backpressure_%s", name),
+				Warn:  thresholds.Warning,
+				Crit:  thresholds.Critical,
+				Value: pipe.Flow.QueueBackpressure.Current})
+			perfList.Add(&perfdata.Perfdata{
+				Label: fmt.Sprintf("pipelines.%s.output_throughput", name),
+				Value: pipe.Flow.OutputThroughput.Current})
+			perfList.Add(&perfdata.Perfdata{
+				Label: fmt.Sprintf("pipelines.%s.input_throughput", name),
+				Value: pipe.Flow.InputThroughput.Current})
+			perfList.Add(&perfdata.Perfdata{
+				Label: fmt.Sprintf("pipelines.%s.filter_throughput", name),
+				Value: pipe.Flow.FilterThroughput.Current})
+		}
+
+		// Validate the various subchecks and use the worst state as return code
+		switch result.WorstState(states...) {
+		case 0:
+			rc = check.OK
+			output = "Flow metrics alright"
+		case 1:
+			rc = check.Warning
+			output = "Flow metrics may not be alright"
+		case 2:
+			rc = check.Critical
+			output = "Flow metrics not alright"
+		default:
+			rc = check.Unknown
+			output = "Flow metrics status unknown"
+		}
+
+		check.ExitRaw(rc, output, summary.String(), "|", perfList.String())
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(pipelineCmd)
 
 	pipelineReloadCmd.Flags().StringVarP(&cliPipelineConfig.PipelineName, "pipeline", "P", "/",
 		"Pipeline Name")
 
+	pipelineFlowCmd.Flags().StringVarP(&cliPipelineConfig.PipelineName, "pipeline", "P", "/",
+		"Pipeline Name")
+	pipelineFlowCmd.Flags().StringVarP(&cliPipelineConfig.Warning, "warning", "w", "",
+		"Warning threshold for queue Backpressure")
+	pipelineFlowCmd.Flags().StringVarP(&cliPipelineConfig.Critical, "critical", "c", "",
+		"Critical threshold for queue Backpressure")
+
+	_ = pipelineFlowCmd.MarkFlagRequired("warning")
+	_ = pipelineFlowCmd.MarkFlagRequired("critical")
+
 	pipelineCmd.AddCommand(pipelineReloadCmd)
+	pipelineCmd.AddCommand(pipelineFlowCmd)
 
 	fs := pipelineCmd.Flags()
 
@@ -268,9 +383,9 @@ func init() {
 	fs.StringVarP(&cliPipelineConfig.PipelineName, "pipeline", "P", "/",
 		"Pipeline Name")
 
-	fs.StringVar(&cliPipelineConfig.InflightEventsWarn, "inflight-events-warn", "",
+	fs.StringVar(&cliPipelineConfig.Warning, "inflight-events-warn", "",
 		"Warning threshold for inflight events to be a warning result. Use min:max for a range.")
-	fs.StringVar(&cliPipelineConfig.InflightEventsCrit, "inflight-events-crit", "",
+	fs.StringVar(&cliPipelineConfig.Critical, "inflight-events-crit", "",
 		"Critical threshold for inflight events to be a critical result. Use min:max for a range.")
 
 	_ = pipelineCmd.MarkFlagRequired("inflight-events-warn")

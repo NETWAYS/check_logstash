@@ -62,7 +62,9 @@ Flags:
 
 ### Pipeline
 
-Checks the status of Logstash pipelines.
+Determines the health of Logstash pipelines via "inflight events". These events are calculated as such: `inflight events = events.In - events.Out`
+
+Hint: Use the queue backpressure for Logstash 8.
 
 ```bash
 Usage:
@@ -84,6 +86,34 @@ Flags:
       --inflight-events-warn string   Warning threshold for inflight events to be a warning result. Use min:max for a range.
       --inflight-events-crit string   Critical threshold for inflight events to be a critical result. Use min:max for a range.
   -h, --help                          help for pipeline
+```
+
+### Pipeline Flow Metrics
+
+Checks the status of a Logstash pipeline's flow metrics (currently queue backpressure).
+
+Hint: Requires Logstash 8.5.0
+
+```bash
+
+Usage:
+  check_logstash pipeline flow [flags]
+
+Examples:
+
+	$ check_logstash pipeline flow --warning 5 --critical 10
+	OK - Flow metrics alright
+	 \_[OK] queue_backpressure_example:0.34;
+
+	$ check_logstash pipeline flow --pipeline example --warning 5 --critical 10
+	CRITICAL - Flow metrics alright
+	 \_[CRITICAL] queue_backpressure_example:11.23;
+
+Flags:
+  -c, --critical string   Critical threshold for queue Backpressure
+  -h, --help              help for flow
+  -P, --pipeline string   Pipeline Name (default "/")
+  -w, --warning string    Warning threshold for queue Backpressure
 ```
 
 ### Pipeline Reload
