@@ -18,6 +18,12 @@ type Pipeline struct {
 			Successes       int    `json:"successes"`
 			Failures        int    `json:"failures"`
 		} `json:"reloads"`
+		Flow struct {
+			QueueBackpressure FlowMetric `json:"queue_backpressure"`
+			OutputThroughput  FlowMetric `json:"output_throughput"`
+			InputThroughput   FlowMetric `json:"input_throughput"`
+			FilterThroughput  FlowMetric `json:"filter_throughput"`
+		} `json:"flow"`
 		Queue struct {
 			Type                string `json:"type"`
 			EventsCount         int    `json:"events_count"`
@@ -32,6 +38,12 @@ type Pipeline struct {
 			Out               int `json:"out"`
 		} `json:"events"`
 	} `json:"pipelines"`
+}
+
+type FlowMetric struct {
+	Current     float64 `json:"current"`
+	Last1Minute float64 `json:"last_1_minute"`
+	Lifetime    float64 `json:"lifetime"`
 }
 
 type Process struct {

@@ -162,6 +162,24 @@ func TestPipelineCmd_Logstash8(t *testing.T) {
 			args:     []string{"run", "../main.go", "pipeline", "reload", "--pipeline", "foo"},
 			expected: "UNKNOWN - Could not get",
 		},
+		{
+			name: "pipeline-flow-ok",
+			server: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"host":"foobar","version":"8.7.1","http_address":"127.0.0.1:9600","id":"4","name":"test","ephemeral_id":"5","status":"green","snapshot":false,"pipeline":{"workers":2,"batch_size":125,"batch_delay":50},"pipelines":{"ansible-input":{"flow":{"queue_backpressure":{"current":12.34,"last_1_minute":0,"lifetime":2.503e-05},"output_throughput":{"current":0,"last_1_minute":0.344,"lifetime":0.7051},"input_throughput":{"current":10,"last_1_minute":0.5734,"lifetime":1.089},"worker_concurrency":{"current":0.0001815,"last_1_minute":0.0009501,"lifetime":0.003384},"filter_throughput":{"current":0,"last_1_minute":0.5734,"lifetime":1.089}},"events":{"filtered":0,"duration_in_millis":0,"queue_push_duration_in_millis":0,"out":50,"in":100},"queue":{"type":"memory","events_count":0,"queue_size_in_bytes":0,"max_queue_size_in_bytes":0},"hash":"f","ephemeral_id":"f"}}}`))
+			})),
+			args:     []string{"run", "../main.go", "pipeline", "flow", "--warning", "15", "--critical", "20"},
+			expected: "[OK] queue_backpressure_ansible-input:12.34; | pipelines.queue_backpressure_ansible-input=12.34;15;20 pipelines.ansible-input.output_throughput=0 pipelines.ansible-input.input_throughput=10 pipelines.ansible-input.filter_throughput=0",
+		},
+		{
+			name: "pipeline-flow-critical",
+			server: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"host":"foobar","version":"8.7.1","http_address":"127.0.0.1:9600","id":"4","name":"test","ephemeral_id":"5","status":"green","snapshot":false,"pipeline":{"workers":2,"batch_size":125,"batch_delay":50},"pipelines":{"ansible-input":{"flow":{"queue_backpressure":{"current":10,"last_1_minute":0,"lifetime":2.503e-05},"output_throughput":{"current":0,"last_1_minute":0.344,"lifetime":0.7051},"input_throughput":{"current":10,"last_1_minute":0.5734,"lifetime":1.089},"worker_concurrency":{"current":0.0001815,"last_1_minute":0.0009501,"lifetime":0.003384},"filter_throughput":{"current":0,"last_1_minute":0.5734,"lifetime":1.089}},"events":{"filtered":0,"duration_in_millis":0,"queue_push_duration_in_millis":0,"out":50,"in":100},"queue":{"type":"memory","events_count":0,"queue_size_in_bytes":0,"max_queue_size_in_bytes":0},"hash":"f","ephemeral_id":"f"}}}`))
+			})),
+			args:     []string{"run", "../main.go", "pipeline", "flow", "--warning", "1", "--critical", "2"},
+			expected: "CRITICAL - Flow metrics not alright",
+		},
 	}
 
 	for _, test := range tests {
