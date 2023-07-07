@@ -23,11 +23,11 @@ release:
     name: check_logstash
 archives:
   - format: binary
-    replacements:
-      darwin: Darwin
-      linux: Linux
-      windows: Windows
-      amd64: x86_64
+    name_template: >-
+      {{- if eq .Arch "amd64" }}x86_64{{ end }}
+      {{- if eq .Os "linux" }}Linux{{ end }}
+      {{- if eq .Os "windows" }}Windows{{ end }}
+      {{- if eq .Os "darwin" }}Darwin{{ end }}
 checksum:
   name_template: 'checksums.txt'
 snapshot:
