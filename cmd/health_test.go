@@ -15,7 +15,7 @@ func TestHealth_ConnectionRefused(t *testing.T) {
 	out, _ := cmd.CombinedOutput()
 
 	actual := string(out)
-	expected := "UNKNOWN - Get \"http://localhost:9999/"
+	expected := "[UNKNOWN] - Get \"http://localhost:9999/"
 
 	if !strings.Contains(actual, expected) {
 		t.Error("\nActual: ", actual, "\nExpected: ", expected)
@@ -38,7 +38,7 @@ func TestHealthCmd_Logstash6(t *testing.T) {
 				w.Write([]byte(`{"host":"logstash","version":"foo"}`))
 			})),
 			args:     []string{"run", "../main.go", "health"},
-			expected: "UNKNOWN - Could not determine version",
+			expected: "[UNKNOWN] - Could not determine version",
 		},
 		{
 			name: "health-ok",
@@ -47,7 +47,7 @@ func TestHealthCmd_Logstash6(t *testing.T) {
 				w.Write([]byte(`{"host":"logstash","version":"6.8.23","http_address":"0.0.0.0:9600","id":"123","name":"logstash","jvm":{"threads":{"count":1,"peak_count":2},"mem":{},"gc":{},"uptime_in_millis":123},"process":{},"events":{},"pipelines":{"main":{}},"reloads":{"failures":0,"successes":0},"os":{}}`))
 			})),
 			args:     []string{"run", "../main.go", "health"},
-			expected: "OK - Logstash is healthy",
+			expected: "[OK] - Logstash is healthy",
 		},
 	}
 
@@ -79,7 +79,7 @@ func TestHealthCmd_Logstash7(t *testing.T) {
 				w.Write([]byte(`{"foo": "bar"}`))
 			})),
 			args:     []string{"run", "../main.go", "health"},
-			expected: "UNKNOWN - Could not determine status",
+			expected: "[UNKNOWN] - Could not determine status",
 		},
 		{
 			name: "health-bearer-ok",
@@ -95,7 +95,7 @@ func TestHealthCmd_Logstash7(t *testing.T) {
 				w.Write([]byte(`The Authorization header wasn't set`))
 			})),
 			args:     []string{"run", "../main.go", "--bearer", "secret", "health"},
-			expected: "OK - Logstash is healthy",
+			expected: "[OK] - Logstash is healthy",
 		},
 		{
 			name: "health-bearer-unauthorized",
@@ -111,7 +111,7 @@ func TestHealthCmd_Logstash7(t *testing.T) {
 				w.Write([]byte(`Access Denied!`))
 			})),
 			args:     []string{"run", "../main.go", "--bearer", "wrong-token", "health"},
-			expected: "UNKNOWN - Could not get ",
+			expected: "[UNKNOWN] - Could not get ",
 		},
 		{
 			name: "health-ok",
@@ -120,7 +120,7 @@ func TestHealthCmd_Logstash7(t *testing.T) {
 				w.Write([]byte(`{"host":"test","version":"7.17.8","status":"green","jvm":{"threads":{"count":50,"peak_count":51},"mem":{"heap_used_percent":20}},"process":{"open_file_descriptors": 120,"peak_open_file_descriptors": 120,"max_file_descriptors":16384,"cpu":{"percent": 1}}}`))
 			})),
 			args:     []string{"run", "../main.go", "health"},
-			expected: "OK - Logstash is healthy",
+			expected: "[OK] - Logstash is healthy",
 		},
 		{
 			name: "health-perfdata",
@@ -138,7 +138,7 @@ func TestHealthCmd_Logstash7(t *testing.T) {
 				w.Write([]byte(`{"host":"test","version":"7.17.8","status":"red","jvm":{"threads":{"count":50,"peak_count":51},"mem":{"heap_used_percent":20}},"process":{"open_file_descriptors": 120,"peak_open_file_descriptors": 120,"max_file_descriptors":16384,"cpu":{"percent": 1}}}`))
 			})),
 			args:     []string{"run", "../main.go", "health"},
-			expected: "CRITICAL - Logstash is unhealthy",
+			expected: "[CRITICAL] - Logstash is unhealthy",
 		},
 		{
 			name: "health-filedesc-ok",
@@ -147,7 +147,7 @@ func TestHealthCmd_Logstash7(t *testing.T) {
 				w.Write([]byte(`{"host":"test","version":"7.17.8","status":"green","jvm":{"threads":{"count":50,"peak_count":51},"mem":{"heap_used_percent":20}},"process":{"open_file_descriptors": 1,"peak_open_file_descriptors": 50,"max_file_descriptors":100,"cpu":{"percent": 1}}}`))
 			})),
 			args:     []string{"run", "../main.go", "health", "--file-descriptor-threshold-crit", "50"},
-			expected: "OK - Logstash is healthy",
+			expected: "[OK] - Logstash is healthy",
 		},
 		{
 			name: "health-filedesc-warn",
@@ -174,7 +174,7 @@ func TestHealthCmd_Logstash7(t *testing.T) {
 				w.Write([]byte(`{"host":"test","version":"7.17.8","status":"green","jvm":{"threads":{"count":50,"peak_count":51},"mem":{"heap_used_percent":50}},"process":{"open_file_descriptors": 51,"peak_open_file_descriptors": 50,"max_file_descriptors":100,"cpu":{"percent": 1}}}`))
 			})),
 			args:     []string{"run", "../main.go", "health", "--heap-usage-threshold-warn", "50"},
-			expected: "OK - Logstash is healthy",
+			expected: "[OK] - Logstash is healthy",
 		},
 		{
 			name: "health-heapuse-warn",
@@ -201,7 +201,7 @@ func TestHealthCmd_Logstash7(t *testing.T) {
 				w.Write([]byte(`{"host":"test","version":"7.17.8","status":"green","jvm":{"threads":{"count":50,"peak_count":51},"mem":{"heap_used_percent":50}},"process":{"open_file_descriptors": 51,"peak_open_file_descriptors": 50,"max_file_descriptors":100,"cpu":{"percent": 50}}}`))
 			})),
 			args:     []string{"run", "../main.go", "health", "--cpu-usage-threshold-warn", "50"},
-			expected: "OK - Logstash is healthy",
+			expected: "[OK] - Logstash is healthy",
 		},
 		{
 			name: "health-cpuuse-warn",
@@ -228,7 +228,7 @@ func TestHealthCmd_Logstash7(t *testing.T) {
 				w.Write([]byte(`{"host":"test","version":"7.17.8","status":"green","jvm":{"threads":{"count":50,"peak_count":51},"mem":{"heap_used_percent":55}},"process":{"open_file_descriptors": 51,"peak_open_file_descriptors": 50,"max_file_descriptors":100,"cpu":{"percent": 45}}}`))
 			})),
 			args:     []string{"run", "../main.go", "health", "--cpu-usage-threshold-warn", "40", "--heap-usage-threshold-crit", "50"},
-			expected: "CRITICAL - Logstash is unhealthy",
+			expected: "[CRITICAL] - Logstash is unhealthy",
 		},
 	}
 
@@ -260,7 +260,7 @@ func TestHealthCmd_Logstash8(t *testing.T) {
 				w.Write([]byte(`{"host":"test","version":"8.6","status":"green","jvm":{"threads":{"count":50,"peak_count":51},"mem":{"heap_used_percent":20}},"process":{"open_file_descriptors": 120,"peak_open_file_descriptors": 120,"max_file_descriptors":16384,"cpu":{"percent": 1}}}`))
 			})),
 			args:     []string{"run", "../main.go", "health"},
-			expected: "OK - Logstash is healthy",
+			expected: "[OK] - Logstash is healthy",
 		},
 		{
 			name: "health-perfdata",
@@ -278,7 +278,7 @@ func TestHealthCmd_Logstash8(t *testing.T) {
 				w.Write([]byte(`{"host":"test","version":"8.6","status":"green","jvm":{"threads":{"count":50,"peak_count":51},"mem":{"heap_used_percent":55}},"process":{"open_file_descriptors": 51,"peak_open_file_descriptors": 50,"max_file_descriptors":100,"cpu":{"percent": 45}}}`))
 			})),
 			args:     []string{"run", "../main.go", "health", "--cpu-usage-threshold-warn", "40", "--heap-usage-threshold-crit", "50"},
-			expected: "CRITICAL - Logstash is unhealthy",
+			expected: "[CRITICAL] - Logstash is unhealthy",
 		},
 	}
 
