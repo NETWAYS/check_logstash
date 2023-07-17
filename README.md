@@ -39,13 +39,13 @@ Usage:
 Examples:
 
 	$ check_logstash health --hostname 'localhost' --port 8888 --insecure
-	OK - Logstash is healthy | status=green process.cpu.percent=0;0.5;3;0;100
+	[OK] - Logstash is healthy | status=green process.cpu.percent=0;0.5;3;0;100
 	 \_[OK] Heap usage at 12.00%
 	 \_[OK] Open file descriptors at 12.00%
 	 \_[OK] CPU usage at 5.00%
 
 	$ check_logstash -p 9600 health --cpu-usage-threshold-warn 50 --cpu-usage-threshold-crit 75
-	WARNING - CPU usage at 55.00%
+	[WARNING] - CPU usage at 55.00%
 	 \_[OK] Heap usage at 12.00%
 	 \_[OK] Open file descriptors at 12.00%
 	 \_[WARNING] CPU usage at 55.00%
@@ -73,12 +73,12 @@ Usage:
 Examples:
 
 	$ check_logstash pipeline --inflight-events-warn 5 --inflight-events-crit 10
-	WARNING - Inflight events
+	[WARNING] - Inflight events
 	 \_[WARNING] inflight_events_example-input:9;
 	 \_[OK] inflight_events_example-default-connector:4
 
 	$ check_logstash pipeline --inflight-events-warn 5 --inflight-events-crit 10 --pipeline example
-	CRITICAL - Inflight events
+	[CRITICAL] - Inflight events
 	 \_[CRITICAL] inflight_events_example:15
 
 Flags:
@@ -102,11 +102,11 @@ Usage:
 Examples:
 
 	$ check_logstash pipeline flow --warning 5 --critical 10
-	OK - Flow metrics alright
+	[OK] - Flow metrics alright
 	 \_[OK] queue_backpressure_example:0.34;
 
 	$ check_logstash pipeline flow --pipeline example --warning 5 --critical 10
-	CRITICAL - Flow metrics alright
+	[CRITICAL] - Flow metrics alright
 	 \_[CRITICAL] queue_backpressure_example:11.23;
 
 Flags:
@@ -127,11 +127,11 @@ Usage:
 Examples:
 
 	$ check_logstash pipeline reload
-	OK - Configuration successfully reloaded
+	[OK] - Configuration successfully reloaded
 	 \_[OK] Configuration successfully reloaded for pipeline Foobar for on 2021-01-01T02:07:14Z
 
 	$ check_logstash pipeline reload --pipeline Example
-	CRITICAL - Configuration reload failed
+	[CRITICAL] - Configuration reload failed
 	 \_[CRITICAL] Configuration reload for pipeline Example failed on 2021-01-01T02:07:14Z
 
 Flags:
