@@ -24,10 +24,11 @@ release:
 archives:
   - format: binary
     name_template: >-
-      {{- if eq .Arch "amd64" }}x86_64{{ end }}
+      {{ .ProjectName }}_{{ .Tag }}_
       {{- if eq .Os "linux" }}Linux{{ end }}
       {{- if eq .Os "windows" }}Windows{{ end }}
       {{- if eq .Os "darwin" }}Darwin{{ end }}
+      {{- if eq .Arch "amd64" }}_x86_64{{ end }}
 checksum:
   name_template: 'checksums.txt'
 snapshot:
