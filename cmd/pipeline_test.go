@@ -65,7 +65,7 @@ func TestPipelineCmd_Logstash7(t *testing.T) {
 				w.Write([]byte(`{"path": "/_node/stats/pipelines/foo","status": 404,"error": {"message": "Not Found"}}`))
 			})),
 			args:     []string{"run", "../main.go", "pipeline", "--inflight-events-warn", "10", "--inflight-events-crit", "20", "--pipeline", "foo"},
-			expected: "[UNKNOWN] - Could not get",
+			expected: "[UNKNOWN] - could not get",
 		},
 		{
 			name: "pipeline-inflight-warn",
@@ -160,7 +160,7 @@ func TestPipelineCmd_Logstash8(t *testing.T) {
 				w.Write([]byte(`{"path": "/_node/stats/pipelines/foo","status": 404,"error": {"message": "Not Found"}}`))
 			})),
 			args:     []string{"run", "../main.go", "pipeline", "reload", "--pipeline", "foo"},
-			expected: "[UNKNOWN] - Could not get",
+			expected: "[UNKNOWN] - could not get",
 		},
 		{
 			name: "pipeline-flow-ok",

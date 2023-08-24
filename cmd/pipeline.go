@@ -3,25 +3,26 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
 	"github.com/NETWAYS/check_logstash/internal/logstash"
 	"github.com/NETWAYS/go-check"
 	"github.com/NETWAYS/go-check/perfdata"
 	"github.com/NETWAYS/go-check/result"
 	"github.com/spf13/cobra"
-	"net/http"
-	"net/url"
-	"strings"
-	"time"
 )
 
-// To store the CLI parameters
+// To store the CLI parameters.
 type PipelineConfig struct {
 	PipelineName string
 	Warning      string
 	Critical     string
 }
 
-// To store the parsed CLI parameters
+// To store the parsed CLI parameters.
 type PipelineThreshold struct {
 	Warning  *check.Threshold
 	Critical *check.Threshold
@@ -82,7 +83,7 @@ var pipelineCmd = &cobra.Command{
 		c := cliConfig.NewClient()
 		// localhost:9600/_node/stats/pipelines/ will return all Pipelines
 		// localhost:9600/_node/stats/pipelines/foo will return the foo Pipeline
-		u, _ := url.JoinPath(c.Url, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
+		u, _ := url.JoinPath(c.URL, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
 		resp, err := c.Client.Get(u)
 
 		if err != nil {
@@ -90,7 +91,7 @@ var pipelineCmd = &cobra.Command{
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			check.ExitError(fmt.Errorf("Could not get %s - Error: %d", u, resp.StatusCode))
+			check.ExitError(fmt.Errorf("could not get %s - Error: %d", u, resp.StatusCode))
 		}
 
 		defer resp.Body.Close()
@@ -185,7 +186,7 @@ var pipelineReloadCmd = &cobra.Command{
 		c := cliConfig.NewClient()
 		// localhost:9600/_node/stats/pipelines/ will return all Pipelines
 		// localhost:9600/_node/stats/pipelines/foo will return the foo Pipeline
-		u, _ := url.JoinPath(c.Url, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
+		u, _ := url.JoinPath(c.URL, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
 		resp, err := c.Client.Get(u)
 
 		if err != nil {
@@ -193,7 +194,7 @@ var pipelineReloadCmd = &cobra.Command{
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			check.ExitError(fmt.Errorf("Could not get %s - Error: %d", u, resp.StatusCode))
+			check.ExitError(fmt.Errorf("could not get %s - Error: %d", u, resp.StatusCode))
 		}
 
 		defer resp.Body.Close()
@@ -284,7 +285,7 @@ var pipelineFlowCmd = &cobra.Command{
 		c := cliConfig.NewClient()
 		// localhost:9600/_node/stats/pipelines/ will return all Pipelines
 		// localhost:9600/_node/stats/pipelines/foo will return the foo Pipeline
-		u, _ := url.JoinPath(c.Url, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
+		u, _ := url.JoinPath(c.URL, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
 		resp, err := c.Client.Get(u)
 
 		if err != nil {
@@ -292,7 +293,7 @@ var pipelineFlowCmd = &cobra.Command{
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			check.ExitError(fmt.Errorf("Could not get %s - Error: %d", u, resp.StatusCode))
+			check.ExitError(fmt.Errorf("could not get %s - Error: %d", u, resp.StatusCode))
 		}
 
 		defer resp.Body.Close()

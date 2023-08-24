@@ -6,7 +6,7 @@ import (
 
 type Client struct {
 	Client http.Client
-	Url    string
+	URL    string
 }
 
 func NewClient(url string, rt http.RoundTripper) *Client {
@@ -16,7 +16,7 @@ func NewClient(url string, rt http.RoundTripper) *Client {
 	}
 
 	return &Client{
-		Url:    url,
+		URL:    url,
 		Client: *c,
 	}
 }

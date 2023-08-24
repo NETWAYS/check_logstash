@@ -38,7 +38,7 @@ func TestHealthCmd_Logstash6(t *testing.T) {
 				w.Write([]byte(`{"host":"logstash","version":"foo"}`))
 			})),
 			args:     []string{"run", "../main.go", "health"},
-			expected: "[UNKNOWN] - Could not determine version",
+			expected: "[UNKNOWN] - could not determine version",
 		},
 		{
 			name: "health-ok",
@@ -79,7 +79,7 @@ func TestHealthCmd_Logstash7(t *testing.T) {
 				w.Write([]byte(`{"foo": "bar"}`))
 			})),
 			args:     []string{"run", "../main.go", "health"},
-			expected: "[UNKNOWN] - Could not determine status",
+			expected: "[UNKNOWN] - could not determine status",
 		},
 		{
 			name: "health-bearer-ok",
@@ -111,7 +111,7 @@ func TestHealthCmd_Logstash7(t *testing.T) {
 				w.Write([]byte(`Access Denied!`))
 			})),
 			args:     []string{"run", "../main.go", "--bearer", "wrong-token", "health"},
-			expected: "[UNKNOWN] - Could not get ",
+			expected: "[UNKNOWN] - could not get ",
 		},
 		{
 			name: "health-ok",
