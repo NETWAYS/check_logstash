@@ -3,17 +3,18 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+
 	"github.com/NETWAYS/check_logstash/internal/logstash"
 	"github.com/NETWAYS/go-check"
 	"github.com/NETWAYS/go-check/perfdata"
 	"github.com/NETWAYS/go-check/result"
 	"github.com/spf13/cobra"
-	"net/http"
-	"net/url"
-	"strings"
 )
 
-// To store the CLI parameters
+// To store the CLI parameters.
 type HealthConfig struct {
 	FileDescThresWarning  string
 	FileDescThresCritical string
@@ -23,7 +24,7 @@ type HealthConfig struct {
 	CPUUseThresCritical   string
 }
 
-// To store the parsed CLI parameters
+// To store the parsed CLI parameters.
 type HealthThreshold struct {
 	fileDescThresWarn *check.Threshold
 	fileDescThresCrit *check.Threshold
@@ -162,7 +163,7 @@ var healthCmd = &cobra.Command{
 
 		// Creating an client and connecting to the API
 		c := cliConfig.NewClient()
-		u, _ := url.JoinPath(c.Url, "/_node/stats")
+		u, _ := url.JoinPath(c.URL, "/_node/stats")
 		resp, err := c.Client.Get(u)
 
 		if err != nil {
@@ -170,7 +171,7 @@ var healthCmd = &cobra.Command{
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			check.ExitError(fmt.Errorf("Could not get %s - Error: %d", u, resp.StatusCode))
+			check.ExitError(fmt.Errorf("could not get %s - Error: %d", u, resp.StatusCode))
 		}
 
 		defer resp.Body.Close()
@@ -193,7 +194,7 @@ var healthCmd = &cobra.Command{
 		// Logstash Health Status
 		switch stat.Status {
 		default:
-			check.ExitError(fmt.Errorf("Could not determine status"))
+			check.ExitError(fmt.Errorf("could not determine status"))
 		case "green":
 			states = append(states, check.OK)
 		case "yellow":
@@ -205,39 +206,39 @@ var healthCmd = &cobra.Command{
 		perfList := generatePerfdata(stat, thresholds)
 
 		// Defaults for the subchecks
-		fdstatus = "OK"
-		heapstatus = "OK"
-		cpustatus = "OK"
+		fdstatus = check.StatusText(check.OK)
+		heapstatus = check.StatusText(check.OK)
+		cpustatus = check.StatusText(check.OK)
 
 		// File Descriptors Check
 		fileDescriptorsPercent := (stat.Process.OpenFileDescriptors / stat.Process.MaxFileDescriptors) * 100
 		if thresholds.fileDescThresWarn.DoesViolate(fileDescriptorsPercent) {
 			states = append(states, check.Warning)
-			fdstatus = "WARNING"
+			fdstatus = check.StatusText(check.Warning)
 		}
 		if thresholds.fileDescThresCrit.DoesViolate(fileDescriptorsPercent) {
 			states = append(states, check.Critical)
-			fdstatus = "CRITICAL"
+			fdstatus = check.StatusText(check.Critical)
 		}
 
 		// Heap Usage Check
 		if thresholds.heapUseThresWarn.DoesViolate(stat.Jvm.Mem.HeapUsedPercent) {
 			states = append(states, check.Warning)
-			heapstatus = "WARNING"
+			heapstatus = check.StatusText(check.Warning)
 		}
 		if thresholds.heapUseThresCrit.DoesViolate(stat.Jvm.Mem.HeapUsedPercent) {
 			states = append(states, check.Critical)
-			heapstatus = "CRITICAL"
+			heapstatus = check.StatusText(check.Critical)
 		}
 
 		// CPU Usage Check
 		if thresholds.cpuUseThresWarn.DoesViolate(stat.Process.CPU.Percent) {
 			states = append(states, check.Warning)
-			cpustatus = "WARNING"
+			cpustatus = check.StatusText(check.Warning)
 		}
 		if thresholds.cpuUseThresCrit.DoesViolate(stat.Process.CPU.Percent) {
 			states = append(states, check.Critical)
-			cpustatus = "CRITICAL"
+			cpustatus = check.StatusText(check.Critical)
 		}
 
 		// Validate the various subchecks and use the worst state as return code

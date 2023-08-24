@@ -2,14 +2,15 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/NETWAYS/check_logstash/internal/client"
-	"github.com/NETWAYS/check_logstash/internal/config"
-	"github.com/NETWAYS/go-check"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/NETWAYS/check_logstash/internal/client"
+	"github.com/NETWAYS/check_logstash/internal/config"
+	"github.com/NETWAYS/go-check"
 )
 
 type Config struct {
@@ -19,10 +20,10 @@ type Config struct {
 	CertFile  string
 	KeyFile   string
 	Hostname  string
+	Port      int
 	Info      bool
 	Insecure  bool
 	PReady    bool
-	Port      int
 	Secure    bool
 }
 
@@ -82,7 +83,7 @@ func (c *Config) NewClient() *client.Client {
 
 	// Using a Bearer Token for authentication
 	if c.Bearer != "" {
-		var t config.Secret = config.Secret(c.Bearer)
+		var t = config.Secret(c.Bearer)
 		rt = config.NewAuthorizationCredentialsRoundTripper("Bearer", t, rt)
 	}
 
@@ -90,12 +91,12 @@ func (c *Config) NewClient() *client.Client {
 	if c.BasicAuth != "" {
 		s := strings.Split(c.BasicAuth, ":")
 		if len(s) != 2 {
-			check.ExitError(fmt.Errorf("Specify the user name and password for server authentication <user:password>"))
+			check.ExitError(fmt.Errorf("specify the user name and password for server authentication <user:password>"))
 		}
 
-		var u string = s[0]
+		var u = s[0]
 
-		var p config.Secret = config.Secret(s[1])
+		var p = config.Secret(s[1])
 
 		rt = config.NewBasicAuthRoundTripper(u, p, "", rt)
 	}

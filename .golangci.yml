@@ -1,31 +1,35 @@
 run:
   timeout: 5m
+  tests: false
   skip-files:
-    - '(.+)_test\.go'
     - 'internal/config/http_config.go'
     - 'internal/config/config.go'
-
 linters:
-  disable-all: false
-  enable:
-    - funlen
-    - dogsled
-    - dupl
-    - whitespace
-    - wsl
-    - exportloopref
-  disable:
-    - scopelint
-    - bodyclose
-    - contextcheck
-    - nilerr
-    - noctx
-    - rowserrcheck
-    - sqlclosecheck
-    - structcheck
-    - unparam
-    - musttag
-  presets:
-    - bugs
-    - unused
-  fast: false
+   enable-all: true
+   disable:
+     - cyclop
+     - depguard
+     - exhaustivestruct
+     - exhaustruct
+     - forbidigo
+     - gci
+     - gochecknoglobals
+     - gochecknoinits
+     - godox
+     - goerr113
+     - gofumpt
+     - gomnd
+     - lll
+     - musttag
+     - nakedret
+     - nlreturn
+     - nolintlint
+     - nonamedreturns
+     - tagliatelle
+     - varnamelen
+     - wrapcheck
+linters-settings:
+   estif:
+     min-complexity: 4
+   maligned:
+     suggest-new: true

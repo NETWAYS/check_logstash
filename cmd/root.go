@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/NETWAYS/go-check"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 var Timeout = 30
@@ -66,7 +67,7 @@ func init() {
 	rootCmd.SetHelpTemplate(help + Copyright)
 }
 
-func Usage(cmd *cobra.Command, strings []string) {
+func Usage(cmd *cobra.Command, _ []string) {
 	_ = cmd.Usage()
 
 	os.Exit(3)

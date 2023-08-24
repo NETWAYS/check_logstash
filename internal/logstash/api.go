@@ -81,6 +81,7 @@ func (s *Stat) UnmarshalJSON(b []byte) error {
 
 	t := (*Temp)(s)
 
+	// nolint: ifshort
 	err := json.Unmarshal(b, t)
 
 	if err != nil {
@@ -88,13 +89,13 @@ func (s *Stat) UnmarshalJSON(b []byte) error {
 	}
 
 	// Could also use some semver package,
-	// but decided against the depedency
+	// but decided against the dependency
 	if s.Version != "" {
 		v := strings.Split(s.Version, ".")
 		majorVersion, convErr := strconv.Atoi(v[0])
 
 		if convErr != nil {
-			return fmt.Errorf("Could not determine version")
+			return fmt.Errorf("could not determine version")
 		}
 
 		s.MajorVersion = majorVersion
