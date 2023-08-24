@@ -28,6 +28,8 @@ Flags:
   -v, --version            version for check_logstash
 ```
 
+The check plugin respects the environment variables `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY`.
+
 ### Health
 
 Checks the health status of the Logstash server.
