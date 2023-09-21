@@ -129,7 +129,7 @@ func TestHealthCmd_Logstash7(t *testing.T) {
 				w.Write([]byte(`{"host":"test","version":"7.17.8","status":"green","jvm":{"threads":{"count":50,"peak_count":51},"mem":{"heap_used_percent":20}},"process":{"open_file_descriptors": 120,"peak_open_file_descriptors": 120,"max_file_descriptors":16384,"cpu":{"percent": 1}}}`))
 			})),
 			args:     []string{"run", "../main.go", "health"},
-			expected: "| status=green process.cpu.percent=1%;100;100;0;100 jvm.mem.heap_used_percent=20%;70;80;0;100 jvm.threads.count=50;;;;0 process.open_file_descriptors=120;100;100;0;16384",
+			expected: "| process.cpu.percent=1%;100;100;0;100 jvm.mem.heap_used_percent=20%;70;80;0;100 jvm.threads.count=50;;;;0 process.open_file_descriptors=120;100;100;0;16384",
 		},
 		{
 			name: "health-red",
@@ -269,7 +269,7 @@ func TestHealthCmd_Logstash8(t *testing.T) {
 				w.Write([]byte(`{"host":"test","version":"8.6","status":"green","jvm":{"threads":{"count":50,"peak_count":51},"mem":{"heap_used_percent":20}},"process":{"open_file_descriptors": 120,"peak_open_file_descriptors": 120,"max_file_descriptors":16384,"cpu":{"percent": 1}}}`))
 			})),
 			args:     []string{"run", "../main.go", "health"},
-			expected: "| status=green process.cpu.percent=1%;100;100;0;100 jvm.mem.heap_used_percent=20%;70;80;0;100 jvm.threads.count=50;;;;0 process.open_file_descriptors=120;100;100;0;16384",
+			expected: "| process.cpu.percent=1%;100;100;0;100 jvm.mem.heap_used_percent=20%;70;80;0;100 jvm.threads.count=50;;;;0 process.open_file_descriptors=120;100;100;0;16384",
 		},
 		{
 			name: "health-cpu-heap-worst-state",
