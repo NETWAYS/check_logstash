@@ -92,9 +92,6 @@ func generatePerfdata(stat logstash.Stat, thres HealthThreshold) perfdata.Perfda
 	var l perfdata.PerfdataList
 
 	l.Add(&perfdata.Perfdata{
-		Label: "status",
-		Value: stat.Status})
-	l.Add(&perfdata.Perfdata{
 		Label: "process.cpu.percent",
 		Value: stat.Process.CPU.Percent,
 		Uom:   "%",

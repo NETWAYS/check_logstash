@@ -41,7 +41,7 @@ Usage:
 Examples:
 
 	$ check_logstash health --hostname 'localhost' --port 8888 --insecure
-	[OK] - Logstash is healthy | status=green process.cpu.percent=0;0.5;3;0;100
+	[OK] - Logstash is healthy | process.cpu.percent=0;0.5;3;0;100
 	 \_[OK] Heap usage at 12.00%
 	 \_[OK] Open file descriptors at 12.00%
 	 \_[OK] CPU usage at 5.00%
