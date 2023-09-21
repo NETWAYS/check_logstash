@@ -1,6 +1,6 @@
 module github.com/NETWAYS/check_logstash
 
-go 1.19
+go 1.21
 
 require (
 	github.com/NETWAYS/go-check v0.5.0
