@@ -30,6 +30,18 @@ type PipelineThreshold struct {
 
 var cliPipelineConfig PipelineConfig
 
+// calculateInflightEvents calculates the current inflight events,
+// returns 0 if the value is negative.
+func calculateInflightEvents(in, out int) int {
+	r := in - out
+
+	if r < 0 {
+		return 0
+	}
+
+	return r
+}
+
 func parsePipeThresholds(config PipelineConfig) (PipelineThreshold, error) {
 	// Parses the CLI parameters
 	var t PipelineThreshold
@@ -107,7 +119,7 @@ var pipelineCmd = &cobra.Command{
 		var summary strings.Builder
 
 		for name, pipe := range pp.Pipelines {
-			inflightEvents := pipe.Events.In - pipe.Events.Out
+			inflightEvents := calculateInflightEvents(pipe.Events.In, pipe.Events.Out)
 
 			summary.WriteString("\n \\_")
 			if thresholds.Critical.DoesViolate(float64(inflightEvents)) {

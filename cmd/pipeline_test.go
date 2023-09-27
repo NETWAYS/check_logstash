@@ -9,6 +9,23 @@ import (
 	"testing"
 )
 
+func TestCalculateInflightEvents(t *testing.T) {
+	var actual int
+
+	actual = calculateInflightEvents(0, 10)
+
+	if actual != 0 {
+		t.Error("\nActual: ", actual, "\nExpected: ", 0)
+	}
+
+	actual = calculateInflightEvents(20, 10)
+
+	if actual != 10 {
+		t.Error("\nActual: ", actual, "\nExpected: ", 10)
+	}
+
+}
+
 func TestPipeline_ConnectionRefused(t *testing.T) {
 
 	cmd := exec.Command("go", "run", "../main.go", "pipeline", "--port", "9999", "--inflight-events-warn", "10", "--inflight-events-crit", "20")
