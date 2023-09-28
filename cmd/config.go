@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/NETWAYS/check_logstash/internal/client"
-	"github.com/NETWAYS/check_logstash/internal/config"
 	"github.com/NETWAYS/go-check"
+	checkhttpconfig "github.com/NETWAYS/go-check-network/http/config"
 )
 
 type Config struct {
@@ -64,7 +64,7 @@ func (c *Config) NewClient() *client.Client {
 	}
 
 	// Create TLS configuration for default RoundTripper
-	tlsConfig, err := config.NewTLSConfig(&config.TLSConfig{
+	tlsConfig, err := checkhttpconfig.NewTLSConfig(&checkhttpconfig.TLSConfig{
 		InsecureSkipVerify: c.Insecure,
 		CAFile:             c.CAFile,
 		KeyFile:            c.KeyFile,
@@ -87,8 +87,7 @@ func (c *Config) NewClient() *client.Client {
 
 	// Using a Bearer Token for authentication
 	if c.Bearer != "" {
-		var t = config.Secret(c.Bearer)
-		rt = config.NewAuthorizationCredentialsRoundTripper("Bearer", t, rt)
+		rt = checkhttpconfig.NewAuthorizationCredentialsRoundTripper("Bearer", c.Bearer, rt)
 	}
 
 	// Using a BasicAuth for authentication
@@ -100,9 +99,9 @@ func (c *Config) NewClient() *client.Client {
 
 		var u = s[0]
 
-		var p = config.Secret(s[1])
+		var p = s[1]
 
-		rt = config.NewBasicAuthRoundTripper(u, p, "", rt)
+		rt = checkhttpconfig.NewBasicAuthRoundTripper(u, p, rt)
 	}
 
 	return client.NewClient(u.String(), rt)
