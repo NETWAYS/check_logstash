@@ -14,21 +14,23 @@ Available Commands:
   pipeline    Checks the status of the Logstash Pipelines
 
 Flags:
-  -H, --hostname string    Hostname of the Logstash server (default "localhost")
+  -H, --hostname string    Hostname of the Logstash server (CHECK_LOGSTASH_HOSTNAME) (default "localhost")
   -p, --port int           Port of the Logstash server (default 9600)
   -s, --secure             Use a HTTPS connection
   -i, --insecure           Skip the verification of the server's TLS certificate
-  -b, --bearer string      Specify the Bearer Token for server authentication
-  -u, --user string        Specify the user name and password for server authentication <user:password>
-      --ca-file string     Specify the CA File for TLS authentication
-      --cert-file string   Specify the Certificate File for TLS authentication
-      --key-file string    Specify the Key File for TLS authentication
+  -b, --bearer string      Specify the Bearer Token for server authentication (CHECK_LOGSTASH_BEARER)
+  -u, --user string        Specify the user name and password for server authentication <user:password> (CHECK_LOGSTASH_BASICAUTH)
+      --ca-file string     Specify the CA File for TLS authentication (CHECK_LOGSTASH_CA_FILE)
+      --cert-file string   Specify the Certificate File for TLS authentication (CHECK_LOGSTASH_CERT_FILE)
+      --key-file string    Specify the Key File for TLS authentication (CHECK_LOGSTASH_KEY_FILE)
   -t, --timeout int        Timeout in seconds for the CheckPlugin (default 30)
   -h, --help               help for check_logstash
   -v, --version            version for check_logstash
 ```
 
 The check plugin respects the environment variables `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY`.
+
+Various flags can be set with environment variables, refer to the help to see which flags.
 
 ### Health
 
