@@ -15,12 +15,12 @@ import (
 )
 
 type Config struct {
-	BasicAuth string
-	Bearer    string
-	CAFile    string
-	CertFile  string
-	KeyFile   string
-	Hostname  string
+	BasicAuth string `env:"CHECK_LOGSTASH_BASICAUTH"`
+	Bearer    string `env:"CHECK_LOGSTASH_BEARER"`
+	CAFile    string `env:"CHECK_LOGSTASH_CA_FILE"`
+	CertFile  string `env:"CHECK_LOGSTASH_CERT_FILE"`
+	KeyFile   string `env:"CHECK_LOGSTASH_KEY_FILE"`
+	Hostname  string `env:"CHECK_LOGSTASH_HOSTNAME"`
 	Port      int
 	Info      bool
 	Insecure  bool
