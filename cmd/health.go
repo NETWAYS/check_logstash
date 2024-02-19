@@ -22,6 +22,7 @@ type HealthConfig struct {
 	HeapUseThresCritical  string
 	CPUUseThresWarning    string
 	CPUUseThresCritical   string
+	UnreachableExitCode   int
 }
 
 // To store the parsed CLI parameters.
@@ -164,7 +165,7 @@ var healthCmd = &cobra.Command{
 		resp, err := c.Client.Get(u)
 
 		if err != nil {
-			check.ExitError(err)
+			check.ExitRaw(cliHealthConfig.UnreachableExitCode, err.Error())
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -283,6 +284,9 @@ func init() {
 		"The percentage of CPU usage on which to be a warning result")
 	fs.StringVarP(&cliHealthConfig.CPUUseThresCritical, "cpu-usage-threshold-crit", "", "100",
 		"The percentage of CPU usage on which to be a critical result")
+
+	fs.IntVarP(&cliHealthConfig.UnreachableExitCode, "unreachable-state", "", 3,
+		"Exit with specified code if unreachable. Examples: 1 for Warning, 2 for Critical, 3 for Unknown")
 
 	fs.SortFlags = false
 }

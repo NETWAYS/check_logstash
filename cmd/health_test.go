@@ -10,12 +10,33 @@ import (
 )
 
 func TestHealth_ConnectionRefused(t *testing.T) {
-
 	cmd := exec.Command("go", "run", "../main.go", "health", "--port", "9999")
 	out, _ := cmd.CombinedOutput()
 
 	actual := string(out)
 	expected := "[UNKNOWN] - Get \"http://localhost:9999/"
+
+	if !strings.Contains(actual, expected) {
+		t.Error("\nActual: ", actual, "\nExpected: ", expected)
+	}
+}
+
+func TestHealth_ConnectionRefusedCritical(t *testing.T) {
+	cmd := exec.Command("go", "run", "../main.go", "health", "--port", "9999", "--unreachable-state", "2")
+	out, _ := cmd.CombinedOutput()
+
+	actual := string(out)
+	expected := "[CRITICAL] - Get \"http://localhost:9999/"
+
+	if !strings.Contains(actual, expected) {
+		t.Error("\nActual: ", actual, "\nExpected: ", expected)
+	}
+
+	cmd = exec.Command("go", "run", "../main.go", "health", "--port", "9999", "--unreachable-state", "-123")
+	out, _ = cmd.CombinedOutput()
+
+	actual = string(out)
+	expected = "[UNKNOWN] - Get \"http://localhost:9999/"
 
 	if !strings.Contains(actual, expected) {
 		t.Error("\nActual: ", actual, "\nExpected: ", expected)

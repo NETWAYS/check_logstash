@@ -61,6 +61,7 @@ Flags:
       --heap-usage-threshold-crit string        The percentage relative to the heap size limit on which to be a critical result (default "80")
       --cpu-usage-threshold-warn string         The percentage of CPU usage on which to be a warning result (default "100")
       --cpu-usage-threshold-crit string         The percentage of CPU usage on which to be a critical result (default "100")
+      --unreachable-state int                   Exit with specified code if unreachable. Examples: 1 for Warning, 2 for Critical, 3 for Unknown (default 3)
   -h, --help                                    help for health
 ```
 
