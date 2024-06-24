@@ -1,5 +1,5 @@
-github.com/NETWAYS/go-check v0.6.1 h1:fwya2nBWoRTUt2U6j3BCe0aUvNw+EbFYji4t1JrloC4=
-github.com/NETWAYS/go-check v0.6.1/go.mod h1:3G1p9ZCv41UcKirl+nZWne8oKVPUY5HbtyjRwGgyw6A=
+github.com/NETWAYS/go-check v0.6.2 h1:H/9Q/+rVzLbSUV/6QS9eDhyMUml7sf67TF4nSuHBwJo=
+github.com/NETWAYS/go-check v0.6.2/go.mod h1:qx8m3s2Xul9wqfUjrCSArEFkOdtwxIyUmBYYrCkqA/8=
 github.com/NETWAYS/go-check-network/http v0.0.0-20230928080609-57070f836e41 h1:5PdguRs5fRgYvok56yQDXJssKXY91vNq6Tmhb4dFH/I=
 github.com/NETWAYS/go-check-network/http v0.0.0-20230928080609-57070f836e41/go.mod h1:jZ62Y7P8/T/TqNy6I7RI/G9G9tXEcpuqrlkkO+xgCRE=
 github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
@@ -18,10 +18,12 @@ github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=
 github.com/stretchr/objx v0.5.0/go.mod h1:Yh+to48EsGEfYuaHDzXPcE3xhTkx73EhmCGUpEOglKo=
+github.com/stretchr/objx v0.5.2/go.mod h1:FRsXN1f5AsAjCGJKqEizvkpNtU+EGNCLh3NxZ/8L+MA=
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
-github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
+github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
+github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
