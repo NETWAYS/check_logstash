@@ -1,6 +1,7 @@
 .idea
 check_logstash
 vendor/
+dist/
 tmp/
 coverage.html
 coverage.out
