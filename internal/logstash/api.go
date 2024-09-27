@@ -2,7 +2,7 @@ package logstash
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"strconv"
 	"strings"
 )
@@ -95,7 +95,7 @@ func (s *Stat) UnmarshalJSON(b []byte) error {
 		majorVersion, convErr := strconv.Atoi(v[0])
 
 		if convErr != nil {
-			return fmt.Errorf("could not determine version")
+			return errors.New("could not determine version")
 		}
 
 		s.MajorVersion = majorVersion

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -139,7 +140,7 @@ var healthCmd = &cobra.Command{
 	 \_[OK] Heap usage at 12.00%
 	 \_[OK] Open file descriptors at 12.00%
 	 \_[WARNING] CPU usage at 55.00%`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		var (
 			output     string
 			rc         int
@@ -192,7 +193,7 @@ var healthCmd = &cobra.Command{
 		// Logstash Health Status
 		switch stat.Status {
 		default:
-			check.ExitError(fmt.Errorf("could not determine status"))
+			check.ExitError(errors.New("could not determine status"))
 		case "green":
 			states = append(states, check.OK)
 		case "yellow":

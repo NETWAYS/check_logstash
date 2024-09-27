@@ -12,7 +12,7 @@ var Timeout = 30
 var rootCmd = &cobra.Command{
 	Use:   "check_logstash",
 	Short: "An Icinga check plugin to check Logstash",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRun: func(_ *cobra.Command, _ []string) {
 		go check.HandleTimeout(Timeout)
 	},
 	Run: Usage,

@@ -76,7 +76,7 @@ var pipelineCmd = &cobra.Command{
 	$ check_logstash pipeline --inflight-events-warn 5 --inflight-events-crit 10 --pipeline example
 	CRITICAL - Inflight events
 	 \_[CRITICAL] inflight_events_example:15`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		var (
 			output     string
 			rc         int
@@ -143,7 +143,7 @@ var pipelineCmd = &cobra.Command{
 				Uom:   "c",
 				Value: pipe.Events.Out})
 			perfList.Add(&perfdata.Perfdata{
-				Label: fmt.Sprintf("inflight_events_%s", name),
+				Label: fmt.Sprintf("inflight_events_%s", name), //nolint: perfsprint
 				Warn:  thresholds.Warning,
 				Crit:  thresholds.Critical,
 				Value: inflightEvents})
@@ -187,7 +187,7 @@ var pipelineReloadCmd = &cobra.Command{
 	$ check_logstash pipeline reload --pipeline Example
 	CRITICAL - Configuration reload failed
 	 \_[CRITICAL] Configuration reload for pipeline Example failed on 2021-01-01T02:07:14Z`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		var (
 			output string
 			rc     int
@@ -278,7 +278,7 @@ var pipelineFlowCmd = &cobra.Command{
 	$ check_logstash pipeline flow --pipeline example --warning 5 --critical 10
 	CRITICAL - Flow metrics not alright
 	 \_[CRITICAL] queue_backpressure_example:11.23;`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		var (
 			output     string
 			rc         int
@@ -335,7 +335,7 @@ var pipelineFlowCmd = &cobra.Command{
 
 			// Generate perfdata for each event
 			perfList.Add(&perfdata.Perfdata{
-				Label: fmt.Sprintf("pipelines.queue_backpressure_%s", name),
+				Label: fmt.Sprintf("pipelines.queue_backpressure_%s", name), //nolint: perfsprint
 				Warn:  thresholds.Warning,
 				Crit:  thresholds.Critical,
 				Value: pipe.Flow.QueueBackpressure.Current})
