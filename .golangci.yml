@@ -1,32 +1,49 @@
+version: "2"
 run:
-  timeout: 5m
   tests: false
-
-issues:
-  exclude-files:
-    - 'internal/config/http_config.go'
-    - 'internal/config/config.go'
-
 linters:
-   enable-all: true
-   disable:
-     - cyclop
-     - depguard
-     - exhaustruct
-     - forbidigo
-     - gci
-     - gochecknoglobals
-     - gochecknoinits
-     - godox
-     - err113
-     - gofumpt
-     - mnd
-     - lll
-     - musttag
-     - nakedret
-     - nlreturn
-     - nolintlint
-     - nonamedreturns
-     - tagliatelle
-     - varnamelen
-     - wrapcheck
+  default: all
+  disable:
+    - cyclop
+    - depguard
+    - err113
+    - exhaustruct
+    - forbidigo
+    - gochecknoglobals
+    - gochecknoinits
+    - godox
+    - lll
+    - mnd
+    - musttag
+    - nakedret
+    - nlreturn
+    - nolintlint
+    - nonamedreturns
+    - tagliatelle
+    - varnamelen
+    - wrapcheck
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - internal/config/http_config.go
+      - internal/config/config.go
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - internal/config/http_config.go
+      - internal/config/config.go
+      - third_party$
+      - builtin$
+      - examples$
