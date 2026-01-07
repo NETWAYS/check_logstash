@@ -23,7 +23,8 @@ release:
     owner: NETWAYS
     name: check_logstash
 archives:
-  - format: binary
+  - formats:
+    - binary
     name_template: >-
       {{ .ProjectName }}_{{ .Tag }}_
       {{- if eq .Os "linux" }}Linux{{ end }}
@@ -33,7 +34,7 @@ archives:
 checksum:
   name_template: 'checksums.txt'
 snapshot:
-  name_template: '{{ .Tag }}-SNAPSHOT-{{.ShortCommit}}'
+  version_template: '{{ .Tag }}-SNAPSHOT-{{.ShortCommit}}'
 changelog:
   sort: asc
   filters:
