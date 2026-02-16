@@ -8,6 +8,7 @@ builds:
       - CGO_ENABLED=0
     goarch:
       - amd64
+      - arm64
     goos:
       - linux
       - windows
@@ -31,6 +32,7 @@ archives:
       {{- if eq .Os "windows" }}Windows{{ end }}
       {{- if eq .Os "darwin" }}Darwin{{ end }}
       {{- if eq .Arch "amd64" }}_x86_64{{ end }}
+      {{- if eq .Arch "arm64" }}_arm64{{ end }}
 checksum:
   name_template: 'checksums.txt'
 snapshot:
