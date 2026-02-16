@@ -69,6 +69,8 @@ Flags:
 
 Determines the health of Logstash pipelines via "inflight events". These events are calculated as such: `inflight events = events.In - events.Out`
 
+Note that dropped are not considered here, this metric is just an approximation.
+
 Hint: Use the queue backpressure for Logstash 8.
 
 ```bash

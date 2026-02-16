@@ -1,7 +1,7 @@
 .PHONY: test coverage lint vet
 
 build:
-	export CGO_ENABLED=0; go build
+	CGO_ENABLED=0 go build
 lint:
 	go fmt $(go list ./... | grep -v /vendor/)
 vet:
