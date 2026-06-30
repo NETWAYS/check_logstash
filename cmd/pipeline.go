@@ -15,14 +15,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// To store the CLI parameters.
+// PipelineConfig for the CLI parameters.
 type PipelineConfig struct {
 	PipelineName string
 	Warning      string
 	Critical     string
 }
 
-// To store the parsed CLI parameters.
+// PipelineThreshold for the parsed CLI parameters.
 type PipelineThreshold struct {
 	Warning  *check.Threshold
 	Critical *check.Threshold
@@ -96,8 +96,8 @@ var pipelineCmd = &cobra.Command{
 		// localhost:9600/_node/stats/pipelines/ will return all Pipelines
 		// localhost:9600/_node/stats/pipelines/foo will return the foo Pipeline
 		u, _ := url.JoinPath(c.URL, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
-		resp, err := c.Client.Get(u)
 
+		resp, err := c.Client.Get(u)
 		if err != nil {
 			check.ExitError(err)
 		}
@@ -107,8 +107,8 @@ var pipelineCmd = &cobra.Command{
 		}
 
 		defer resp.Body.Close()
-		err = json.NewDecoder(resp.Body).Decode(&pp)
 
+		err = json.NewDecoder(resp.Body).Decode(&pp)
 		if err != nil {
 			check.ExitError(err)
 		}
@@ -122,15 +122,19 @@ var pipelineCmd = &cobra.Command{
 			inflightEvents := calculateInflightEvents(pipe.Events.In, pipe.Events.Out)
 
 			summary.WriteString("\n \\_")
+
 			if thresholds.Critical.DoesViolate(float64(inflightEvents)) {
 				states = append(states, check.Critical)
-				summary.WriteString(fmt.Sprintf("[CRITICAL] inflight_events_%s:%d;", name, inflightEvents))
+
+				fmt.Fprintf(&summary, "[CRITICAL] inflight_events_%s:%d;", name, inflightEvents)
 			} else if thresholds.Warning.DoesViolate(float64(inflightEvents)) {
 				states = append(states, check.Warning)
-				summary.WriteString(fmt.Sprintf("[WARNING] inflight_events_%s:%d;", name, inflightEvents))
+
+				fmt.Fprintf(&summary, "[WARNING] inflight_events_%s:%d;", name, inflightEvents)
 			} else {
 				states = append(states, check.OK)
-				summary.WriteString(fmt.Sprintf("[OK] inflight_events_%s:%d;", name, inflightEvents))
+
+				fmt.Fprintf(&summary, "[OK] inflight_events_%s:%d;", name, inflightEvents)
 			}
 
 			// Generate perfdata for each event
@@ -199,8 +203,8 @@ var pipelineReloadCmd = &cobra.Command{
 		// localhost:9600/_node/stats/pipelines/ will return all Pipelines
 		// localhost:9600/_node/stats/pipelines/foo will return the foo Pipeline
 		u, _ := url.JoinPath(c.URL, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
-		resp, err := c.Client.Get(u)
 
+		resp, err := c.Client.Get(u)
 		if err != nil {
 			check.ExitError(err)
 		}
@@ -210,8 +214,8 @@ var pipelineReloadCmd = &cobra.Command{
 		}
 
 		defer resp.Body.Close()
-		err = json.NewDecoder(resp.Body).Decode(&pp)
 
+		err = json.NewDecoder(resp.Body).Decode(&pp)
 		if err != nil {
 			check.ExitError(err)
 		}
@@ -230,18 +234,23 @@ var pipelineReloadCmd = &cobra.Command{
 
 				if errSu != nil || errFa != nil {
 					states = append(states, check.Unknown)
-					summary.WriteString(fmt.Sprintf("[UNKNOWN] Configuration reload for pipeline %s unknown;", name))
+
+					fmt.Fprintf(&summary, "[UNKNOWN] Configuration reload for pipeline %s unknown;", name)
 					summary.WriteString("\n  \\_")
+
 					continue
 				}
 
 				summary.WriteString("\n  \\_")
+
 				if lastFailureReload.After(lastSuccessReload) {
 					states = append(states, check.Critical)
-					summary.WriteString(fmt.Sprintf("[CRITICAL] Configuration reload for pipeline %s failed on %s;", name, lastFailureReload))
+
+					fmt.Fprintf(&summary, "[CRITICAL] Configuration reload for pipeline %s failed on %s;", name, lastFailureReload)
 				} else {
 					states = append(states, check.OK)
-					summary.WriteString(fmt.Sprintf("[OK] Configuration successfully reloaded for pipeline %s for on %s;", name, lastSuccessReload))
+
+					fmt.Fprintf(&summary, "[OK] Configuration successfully reloaded for pipeline %s for on %s;", name, lastSuccessReload)
 				}
 			}
 		}
@@ -298,8 +307,8 @@ var pipelineFlowCmd = &cobra.Command{
 		// localhost:9600/_node/stats/pipelines/ will return all Pipelines
 		// localhost:9600/_node/stats/pipelines/foo will return the foo Pipeline
 		u, _ := url.JoinPath(c.URL, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
-		resp, err := c.Client.Get(u)
 
+		resp, err := c.Client.Get(u)
 		if err != nil {
 			check.ExitError(err)
 		}
@@ -309,8 +318,8 @@ var pipelineFlowCmd = &cobra.Command{
 		}
 
 		defer resp.Body.Close()
-		err = json.NewDecoder(resp.Body).Decode(&pp)
 
+		err = json.NewDecoder(resp.Body).Decode(&pp)
 		if err != nil {
 			check.ExitError(err)
 		}
@@ -322,15 +331,19 @@ var pipelineFlowCmd = &cobra.Command{
 
 		for name, pipe := range pp.Pipelines {
 			summary.WriteString("\n \\_")
+
 			if thresholds.Critical.DoesViolate(pipe.Flow.QueueBackpressure.Current) {
 				states = append(states, check.Critical)
-				summary.WriteString(fmt.Sprintf("[CRITICAL] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current))
+
+				fmt.Fprintf(&summary, "[CRITICAL] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current)
 			} else if thresholds.Warning.DoesViolate(pipe.Flow.QueueBackpressure.Current) {
 				states = append(states, check.Warning)
-				summary.WriteString(fmt.Sprintf("[WARNING] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current))
+
+				fmt.Fprintf(&summary, "[WARNING] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current)
 			} else {
 				states = append(states, check.OK)
-				summary.WriteString(fmt.Sprintf("[OK] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current))
+
+				fmt.Fprintf(&summary, "[OK] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current)
 			}
 
 			// Generate perfdata for each event

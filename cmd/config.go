@@ -70,7 +70,6 @@ func (c *Config) NewClient() *client.Client {
 		KeyFile:            c.KeyFile,
 		CertFile:           c.CertFile,
 	})
-
 	if err != nil {
 		check.ExitError(err)
 	}

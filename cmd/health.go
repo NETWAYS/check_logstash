@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// To store the CLI parameters.
+// HealthConfig for the CLI parameters.
 type HealthConfig struct {
 	FileDescThresWarning  string
 	FileDescThresCritical string
@@ -26,7 +26,7 @@ type HealthConfig struct {
 	UnreachableExitCode   int
 }
 
-// To store the parsed CLI parameters.
+// HealthThreshold for the parsed CLI parameters.
 type HealthThreshold struct {
 	fileDescThresWarn *check.Threshold
 	fileDescThresCrit *check.Threshold
@@ -163,8 +163,8 @@ var healthCmd = &cobra.Command{
 		// Creating an client and connecting to the API
 		c := cliConfig.NewClient()
 		u, _ := url.JoinPath(c.URL, "/_node/stats")
-		resp, err := c.Client.Get(u)
 
+		resp, err := c.Client.Get(u)
 		if err != nil {
 			check.ExitRaw(cliHealthConfig.UnreachableExitCode, err.Error())
 		}
@@ -174,8 +174,8 @@ var healthCmd = &cobra.Command{
 		}
 
 		defer resp.Body.Close()
-		err = json.NewDecoder(resp.Body).Decode(&stat)
 
+		err = json.NewDecoder(resp.Body).Decode(&stat)
 		if err != nil {
 			check.ExitError(err)
 		}
@@ -215,6 +215,7 @@ var healthCmd = &cobra.Command{
 			states = append(states, check.Warning)
 			fdstatus = check.StatusText(check.Warning)
 		}
+
 		if thresholds.fileDescThresCrit.DoesViolate(fileDescriptorsPercent) {
 			states = append(states, check.Critical)
 			fdstatus = check.StatusText(check.Critical)
@@ -225,6 +226,7 @@ var healthCmd = &cobra.Command{
 			states = append(states, check.Warning)
 			heapstatus = check.StatusText(check.Warning)
 		}
+
 		if thresholds.heapUseThresCrit.DoesViolate(stat.Jvm.Mem.HeapUsedPercent) {
 			states = append(states, check.Critical)
 			heapstatus = check.StatusText(check.Critical)
@@ -235,6 +237,7 @@ var healthCmd = &cobra.Command{
 			states = append(states, check.Warning)
 			cpustatus = check.StatusText(check.Warning)
 		}
+
 		if thresholds.cpuUseThresCrit.DoesViolate(stat.Process.CPU.Percent) {
 			states = append(states, check.Critical)
 			cpustatus = check.StatusText(check.Critical)
@@ -258,9 +261,9 @@ var healthCmd = &cobra.Command{
 
 		// Generate summary for subchecks
 		var summary strings.Builder
-		summary.WriteString(fmt.Sprintf("\n \\_[%s] Heap usage at %.2f%%", heapstatus, stat.Jvm.Mem.HeapUsedPercent))
-		summary.WriteString(fmt.Sprintf("\n \\_[%s] Open file descriptors at %.2f%%", fdstatus, fileDescriptorsPercent))
-		summary.WriteString(fmt.Sprintf("\n \\_[%s] CPU usage at %.2f%%", cpustatus, stat.Process.CPU.Percent))
+		fmt.Fprintf(&summary, "\n \\_[%s] Heap usage at %.2f%%", heapstatus, stat.Jvm.Mem.HeapUsedPercent)
+		fmt.Fprintf(&summary, "\n \\_[%s] Open file descriptors at %.2f%%", fdstatus, fileDescriptorsPercent)
+		fmt.Fprintf(&summary, "\n \\_[%s] CPU usage at %.2f%%", cpustatus, stat.Process.CPU.Percent)
 
 		check.ExitRaw(rc, output, summary.String(), "|", perfList.String())
 	},
