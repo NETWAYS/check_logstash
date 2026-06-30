@@ -10,8 +10,6 @@ import (
 
 	"github.com/NETWAYS/check_logstash/internal/logstash"
 	"github.com/NETWAYS/go-check"
-	"github.com/NETWAYS/go-check/perfdata"
-	"github.com/NETWAYS/go-check/result"
 	"github.com/spf13/cobra"
 )
 
@@ -89,11 +87,11 @@ func parseHealthThresholds(config HealthConfig) (HealthThreshold, error) {
 	return t, nil
 }
 
-func generatePerfdata(stat logstash.Stat, thres HealthThreshold) perfdata.PerfdataList {
+func generatePerfdata(stat logstash.Stat, thres HealthThreshold) check.PerfdataList {
 	// Generates the Perfdata from the results and thresholds
-	var l perfdata.PerfdataList
+	var l check.PerfdataList
 
-	l.Add(&perfdata.Perfdata{
+	l.Add(&check.Perfdata{
 		Label: "process.cpu.percent",
 		Value: stat.Process.CPU.Percent,
 		Uom:   "%",
@@ -101,7 +99,7 @@ func generatePerfdata(stat logstash.Stat, thres HealthThreshold) perfdata.Perfda
 		Crit:  thres.cpuUseThresCrit,
 		Min:   0,
 		Max:   100})
-	l.Add(&perfdata.Perfdata{
+	l.Add(&check.Perfdata{
 		Label: "jvm.mem.heap_used_percent",
 		Uom:   "%",
 		Value: stat.Jvm.Mem.HeapUsedPercent,
@@ -109,11 +107,11 @@ func generatePerfdata(stat logstash.Stat, thres HealthThreshold) perfdata.Perfda
 		Crit:  thres.heapUseThresCrit,
 		Min:   0,
 		Max:   100})
-	l.Add(&perfdata.Perfdata{
+	l.Add(&check.Perfdata{
 		Label: "jvm.threads.count",
 		Value: stat.Jvm.Threads.Count,
 		Max:   0})
-	l.Add(&perfdata.Perfdata{
+	l.Add(&check.Perfdata{
 		Label: "process.open_file_descriptors",
 		Value: stat.Process.OpenFileDescriptors,
 		Warn:  thres.fileDescThresWarn,
@@ -143,7 +141,7 @@ var healthCmd = &cobra.Command{
 	Run: func(_ *cobra.Command, _ []string) {
 		var (
 			output     string
-			rc         int
+			rc         check.Status
 			stat       logstash.Stat
 			thresholds HealthThreshold
 			fdstatus   string
@@ -152,12 +150,17 @@ var healthCmd = &cobra.Command{
 		)
 
 		// status + fdstatus + heapstatus + cpustatus = 4
-		states := make([]int, 0, 4)
+		states := make([]check.Status, 0, 4)
 
 		// Parse the thresholds into a central var since we need them later
 		thresholds, err := parseHealthThresholds(cliHealthConfig)
 		if err != nil {
 			check.ExitError(err)
+		}
+
+		unreachableExitCode, errExit := check.NewStatus(cliHealthConfig.UnreachableExitCode)
+		if errExit != nil {
+			unreachableExitCode = check.Unknown
 		}
 
 		// Creating an client and connecting to the API
@@ -166,7 +169,7 @@ var healthCmd = &cobra.Command{
 
 		resp, err := c.Client.Get(u)
 		if err != nil {
-			check.ExitRaw(cliHealthConfig.UnreachableExitCode, err.Error())
+			check.Exit(unreachableExitCode, err.Error())
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -205,46 +208,47 @@ var healthCmd = &cobra.Command{
 		perfList := generatePerfdata(stat, thresholds)
 
 		// Defaults for the subchecks
-		fdstatus = check.StatusText(check.OK)
-		heapstatus = check.StatusText(check.OK)
-		cpustatus = check.StatusText(check.OK)
+		fdstatus = check.OKString
+		heapstatus = check.OKString
+		cpustatus = check.OKString
 
 		// File Descriptors Check
 		fileDescriptorsPercent := (stat.Process.OpenFileDescriptors / stat.Process.MaxFileDescriptors) * 100
 		if thresholds.fileDescThresWarn.DoesViolate(fileDescriptorsPercent) {
 			states = append(states, check.Warning)
-			fdstatus = check.StatusText(check.Warning)
+			fdstatus = check.WarningString
 		}
 
 		if thresholds.fileDescThresCrit.DoesViolate(fileDescriptorsPercent) {
 			states = append(states, check.Critical)
-			fdstatus = check.StatusText(check.Critical)
+			fdstatus = check.CriticalString
 		}
 
 		// Heap Usage Check
 		if thresholds.heapUseThresWarn.DoesViolate(stat.Jvm.Mem.HeapUsedPercent) {
 			states = append(states, check.Warning)
-			heapstatus = check.StatusText(check.Warning)
+			heapstatus = check.WarningString
 		}
 
 		if thresholds.heapUseThresCrit.DoesViolate(stat.Jvm.Mem.HeapUsedPercent) {
 			states = append(states, check.Critical)
-			heapstatus = check.StatusText(check.Critical)
+			heapstatus = check.CriticalString
 		}
 
 		// CPU Usage Check
 		if thresholds.cpuUseThresWarn.DoesViolate(stat.Process.CPU.Percent) {
 			states = append(states, check.Warning)
-			cpustatus = check.StatusText(check.Warning)
+			cpustatus = check.WarningString
 		}
 
 		if thresholds.cpuUseThresCrit.DoesViolate(stat.Process.CPU.Percent) {
 			states = append(states, check.Critical)
-			cpustatus = check.StatusText(check.Critical)
+			cpustatus = check.CriticalString
 		}
 
 		// Validate the various subchecks and use the worst state as return code
-		switch result.WorstState(states...) {
+		//nolint: exhaustive
+		switch check.WorstState(states...) {
 		case 0:
 			rc = check.OK
 			output = "Logstash is healthy"
@@ -265,7 +269,7 @@ var healthCmd = &cobra.Command{
 		fmt.Fprintf(&summary, "\n \\_[%s] Open file descriptors at %.2f%%", fdstatus, fileDescriptorsPercent)
 		fmt.Fprintf(&summary, "\n \\_[%s] CPU usage at %.2f%%", cpustatus, stat.Process.CPU.Percent)
 
-		check.ExitRaw(rc, output, summary.String(), "|", perfList.String())
+		check.ExitWithPerfdata(rc, perfList, output, summary.String())
 	},
 }
 

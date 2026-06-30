@@ -10,8 +10,6 @@ import (
 
 	"github.com/NETWAYS/check_logstash/internal/logstash"
 	"github.com/NETWAYS/go-check"
-	"github.com/NETWAYS/go-check/perfdata"
-	"github.com/NETWAYS/go-check/result"
 	"github.com/spf13/cobra"
 )
 
@@ -79,10 +77,10 @@ var pipelineCmd = &cobra.Command{
 	Run: func(_ *cobra.Command, _ []string) {
 		var (
 			output     string
-			rc         int
+			rc         check.Status
 			pp         logstash.Pipeline
 			thresholds PipelineThreshold
-			perfList   perfdata.PerfdataList
+			perfList   check.PerfdataList
 		)
 
 		// Parse the thresholds into a central var since we need them later
@@ -113,7 +111,7 @@ var pipelineCmd = &cobra.Command{
 			check.ExitError(err)
 		}
 
-		states := make([]int, 0, len(pp.Pipelines))
+		states := make([]check.Status, 0, len(pp.Pipelines))
 
 		// Check status for each pipeline
 		var summary strings.Builder
@@ -138,29 +136,30 @@ var pipelineCmd = &cobra.Command{
 			}
 
 			// Generate perfdata for each event
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.events.in", name),
 				Uom:   "c",
 				Value: pipe.Events.In})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.events.out", name),
 				Uom:   "c",
 				Value: pipe.Events.Out})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("inflight_events_%s", name), //nolint: perfsprint
 				Warn:  thresholds.Warning,
 				Crit:  thresholds.Critical,
 				Value: inflightEvents})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.reloads.failures", name),
 				Value: pipe.Reloads.Failures})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.reloads.successes", name),
 				Value: pipe.Reloads.Successes})
 		}
 
 		// Validate the various subchecks and use the worst state as return code
-		switch result.WorstState(states...) {
+		//nolint: exhaustive
+		switch check.WorstState(states...) {
 		case 0:
 			rc = check.OK
 			output = "Inflight events alright"
@@ -175,7 +174,7 @@ var pipelineCmd = &cobra.Command{
 			output = "Inflight events status unknown"
 		}
 
-		check.ExitRaw(rc, output, summary.String(), "|", perfList.String())
+		check.ExitWithPerfdata(rc, perfList, output, summary.String())
 	},
 }
 
@@ -194,7 +193,7 @@ var pipelineReloadCmd = &cobra.Command{
 	Run: func(_ *cobra.Command, _ []string) {
 		var (
 			output string
-			rc     int
+			rc     check.Status
 			pp     logstash.Pipeline
 		)
 
@@ -220,7 +219,7 @@ var pipelineReloadCmd = &cobra.Command{
 			check.ExitError(err)
 		}
 
-		states := make([]int, 0, len(pp.Pipelines))
+		states := make([]check.Status, 0, len(pp.Pipelines))
 
 		// Check the reload configuration status for each pipeline
 		var summary strings.Builder
@@ -256,7 +255,8 @@ var pipelineReloadCmd = &cobra.Command{
 		}
 
 		// Validate the various subchecks and use the worst state as return code
-		switch result.WorstState(states...) {
+		//nolint: exhaustive
+		switch check.WorstState(states...) {
 		case 0:
 			rc = check.OK
 			output = "Configuration successfully reloaded"
@@ -271,7 +271,7 @@ var pipelineReloadCmd = &cobra.Command{
 			output = "Configuration reload status unknown"
 		}
 
-		check.ExitRaw(rc, output, summary.String())
+		check.Exit(rc, output, summary.String())
 	},
 }
 
@@ -290,10 +290,10 @@ var pipelineFlowCmd = &cobra.Command{
 	Run: func(_ *cobra.Command, _ []string) {
 		var (
 			output     string
-			rc         int
+			rc         check.Status
 			thresholds PipelineThreshold
 			pp         logstash.Pipeline
-			perfList   perfdata.PerfdataList
+			perfList   check.PerfdataList
 		)
 
 		// Parse the thresholds into a central var since we need them later
@@ -324,7 +324,7 @@ var pipelineFlowCmd = &cobra.Command{
 			check.ExitError(err)
 		}
 
-		states := make([]int, 0, len(pp.Pipelines))
+		states := make([]check.Status, 0, len(pp.Pipelines))
 
 		// Check the flow metrics for each pipeline
 		var summary strings.Builder
@@ -347,24 +347,25 @@ var pipelineFlowCmd = &cobra.Command{
 			}
 
 			// Generate perfdata for each event
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.queue_backpressure_%s", name), //nolint: perfsprint
 				Warn:  thresholds.Warning,
 				Crit:  thresholds.Critical,
 				Value: pipe.Flow.QueueBackpressure.Current})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.output_throughput", name),
 				Value: pipe.Flow.OutputThroughput.Current})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.input_throughput", name),
 				Value: pipe.Flow.InputThroughput.Current})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.filter_throughput", name),
 				Value: pipe.Flow.FilterThroughput.Current})
 		}
 
 		// Validate the various subchecks and use the worst state as return code
-		switch result.WorstState(states...) {
+		//nolint: exhaustive
+		switch check.WorstState(states...) {
 		case 0:
 			rc = check.OK
 			output = "Flow metrics alright"
@@ -379,7 +380,7 @@ var pipelineFlowCmd = &cobra.Command{
 			output = "Flow metrics status unknown"
 		}
 
-		check.ExitRaw(rc, output, summary.String(), "|", perfList.String())
+		check.ExitWithPerfdata(rc, perfList, output, summary.String())
 	},
 }
 
