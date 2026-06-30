@@ -73,7 +73,7 @@ type Stat struct {
 	MajorVersion int
 }
 
-// Custom Unmarshal since we might want to add or parse
+// UnmarshalJSON is a custom unmarshal since we might want to add or parse
 // further fields in the future. This is simpler to extend and
 // to test here than during the CheckPlugin logic.
 func (s *Stat) UnmarshalJSON(b []byte) error {
@@ -81,9 +81,7 @@ func (s *Stat) UnmarshalJSON(b []byte) error {
 
 	t := (*Temp)(s)
 
-	// nolint: ifshort
 	err := json.Unmarshal(b, t)
-
 	if err != nil {
 		return err
 	}
@@ -92,8 +90,8 @@ func (s *Stat) UnmarshalJSON(b []byte) error {
 	// but decided against the dependency
 	if s.Version != "" {
 		v := strings.Split(s.Version, ".")
-		majorVersion, convErr := strconv.Atoi(v[0])
 
+		majorVersion, convErr := strconv.Atoi(v[0])
 		if convErr != nil {
 			return errors.New("could not determine version")
 		}

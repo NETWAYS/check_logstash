@@ -10,19 +10,17 @@ import (
 
 	"github.com/NETWAYS/check_logstash/internal/logstash"
 	"github.com/NETWAYS/go-check"
-	"github.com/NETWAYS/go-check/perfdata"
-	"github.com/NETWAYS/go-check/result"
 	"github.com/spf13/cobra"
 )
 
-// To store the CLI parameters.
+// PipelineConfig for the CLI parameters.
 type PipelineConfig struct {
 	PipelineName string
 	Warning      string
 	Critical     string
 }
 
-// To store the parsed CLI parameters.
+// PipelineThreshold for the parsed CLI parameters.
 type PipelineThreshold struct {
 	Warning  *check.Threshold
 	Critical *check.Threshold
@@ -79,10 +77,10 @@ var pipelineCmd = &cobra.Command{
 	Run: func(_ *cobra.Command, _ []string) {
 		var (
 			output     string
-			rc         int
+			rc         check.Status
 			pp         logstash.Pipeline
 			thresholds PipelineThreshold
-			perfList   perfdata.PerfdataList
+			perfList   check.PerfdataList
 		)
 
 		// Parse the thresholds into a central var since we need them later
@@ -96,8 +94,8 @@ var pipelineCmd = &cobra.Command{
 		// localhost:9600/_node/stats/pipelines/ will return all Pipelines
 		// localhost:9600/_node/stats/pipelines/foo will return the foo Pipeline
 		u, _ := url.JoinPath(c.URL, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
-		resp, err := c.Client.Get(u)
 
+		resp, err := c.Client.Get(u)
 		if err != nil {
 			check.ExitError(err)
 		}
@@ -107,13 +105,13 @@ var pipelineCmd = &cobra.Command{
 		}
 
 		defer resp.Body.Close()
-		err = json.NewDecoder(resp.Body).Decode(&pp)
 
+		err = json.NewDecoder(resp.Body).Decode(&pp)
 		if err != nil {
 			check.ExitError(err)
 		}
 
-		states := make([]int, 0, len(pp.Pipelines))
+		states := make([]check.Status, 0, len(pp.Pipelines))
 
 		// Check status for each pipeline
 		var summary strings.Builder
@@ -122,41 +120,46 @@ var pipelineCmd = &cobra.Command{
 			inflightEvents := calculateInflightEvents(pipe.Events.In, pipe.Events.Out)
 
 			summary.WriteString("\n \\_")
+
 			if thresholds.Critical.DoesViolate(float64(inflightEvents)) {
 				states = append(states, check.Critical)
-				summary.WriteString(fmt.Sprintf("[CRITICAL] inflight_events_%s:%d;", name, inflightEvents))
+
+				fmt.Fprintf(&summary, "[CRITICAL] inflight_events_%s:%d;", name, inflightEvents)
 			} else if thresholds.Warning.DoesViolate(float64(inflightEvents)) {
 				states = append(states, check.Warning)
-				summary.WriteString(fmt.Sprintf("[WARNING] inflight_events_%s:%d;", name, inflightEvents))
+
+				fmt.Fprintf(&summary, "[WARNING] inflight_events_%s:%d;", name, inflightEvents)
 			} else {
 				states = append(states, check.OK)
-				summary.WriteString(fmt.Sprintf("[OK] inflight_events_%s:%d;", name, inflightEvents))
+
+				fmt.Fprintf(&summary, "[OK] inflight_events_%s:%d;", name, inflightEvents)
 			}
 
 			// Generate perfdata for each event
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.events.in", name),
 				Uom:   "c",
 				Value: pipe.Events.In})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.events.out", name),
 				Uom:   "c",
 				Value: pipe.Events.Out})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("inflight_events_%s", name), //nolint: perfsprint
 				Warn:  thresholds.Warning,
 				Crit:  thresholds.Critical,
 				Value: inflightEvents})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.reloads.failures", name),
 				Value: pipe.Reloads.Failures})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.reloads.successes", name),
 				Value: pipe.Reloads.Successes})
 		}
 
 		// Validate the various subchecks and use the worst state as return code
-		switch result.WorstState(states...) {
+		//nolint: exhaustive
+		switch check.WorstState(states...) {
 		case 0:
 			rc = check.OK
 			output = "Inflight events alright"
@@ -171,7 +174,7 @@ var pipelineCmd = &cobra.Command{
 			output = "Inflight events status unknown"
 		}
 
-		check.ExitRaw(rc, output, summary.String(), "|", perfList.String())
+		check.ExitWithPerfdata(rc, perfList, output, summary.String())
 	},
 }
 
@@ -190,7 +193,7 @@ var pipelineReloadCmd = &cobra.Command{
 	Run: func(_ *cobra.Command, _ []string) {
 		var (
 			output string
-			rc     int
+			rc     check.Status
 			pp     logstash.Pipeline
 		)
 
@@ -199,8 +202,8 @@ var pipelineReloadCmd = &cobra.Command{
 		// localhost:9600/_node/stats/pipelines/ will return all Pipelines
 		// localhost:9600/_node/stats/pipelines/foo will return the foo Pipeline
 		u, _ := url.JoinPath(c.URL, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
-		resp, err := c.Client.Get(u)
 
+		resp, err := c.Client.Get(u)
 		if err != nil {
 			check.ExitError(err)
 		}
@@ -210,13 +213,13 @@ var pipelineReloadCmd = &cobra.Command{
 		}
 
 		defer resp.Body.Close()
-		err = json.NewDecoder(resp.Body).Decode(&pp)
 
+		err = json.NewDecoder(resp.Body).Decode(&pp)
 		if err != nil {
 			check.ExitError(err)
 		}
 
-		states := make([]int, 0, len(pp.Pipelines))
+		states := make([]check.Status, 0, len(pp.Pipelines))
 
 		// Check the reload configuration status for each pipeline
 		var summary strings.Builder
@@ -230,24 +233,30 @@ var pipelineReloadCmd = &cobra.Command{
 
 				if errSu != nil || errFa != nil {
 					states = append(states, check.Unknown)
-					summary.WriteString(fmt.Sprintf("[UNKNOWN] Configuration reload for pipeline %s unknown;", name))
+
+					fmt.Fprintf(&summary, "[UNKNOWN] Configuration reload for pipeline %s unknown;", name)
 					summary.WriteString("\n  \\_")
+
 					continue
 				}
 
 				summary.WriteString("\n  \\_")
+
 				if lastFailureReload.After(lastSuccessReload) {
 					states = append(states, check.Critical)
-					summary.WriteString(fmt.Sprintf("[CRITICAL] Configuration reload for pipeline %s failed on %s;", name, lastFailureReload))
+
+					fmt.Fprintf(&summary, "[CRITICAL] Configuration reload for pipeline %s failed on %s;", name, lastFailureReload)
 				} else {
 					states = append(states, check.OK)
-					summary.WriteString(fmt.Sprintf("[OK] Configuration successfully reloaded for pipeline %s for on %s;", name, lastSuccessReload))
+
+					fmt.Fprintf(&summary, "[OK] Configuration successfully reloaded for pipeline %s for on %s;", name, lastSuccessReload)
 				}
 			}
 		}
 
 		// Validate the various subchecks and use the worst state as return code
-		switch result.WorstState(states...) {
+		//nolint: exhaustive
+		switch check.WorstState(states...) {
 		case 0:
 			rc = check.OK
 			output = "Configuration successfully reloaded"
@@ -262,7 +271,7 @@ var pipelineReloadCmd = &cobra.Command{
 			output = "Configuration reload status unknown"
 		}
 
-		check.ExitRaw(rc, output, summary.String())
+		check.Exit(rc, output, summary.String())
 	},
 }
 
@@ -281,10 +290,10 @@ var pipelineFlowCmd = &cobra.Command{
 	Run: func(_ *cobra.Command, _ []string) {
 		var (
 			output     string
-			rc         int
+			rc         check.Status
 			thresholds PipelineThreshold
 			pp         logstash.Pipeline
-			perfList   perfdata.PerfdataList
+			perfList   check.PerfdataList
 		)
 
 		// Parse the thresholds into a central var since we need them later
@@ -298,8 +307,8 @@ var pipelineFlowCmd = &cobra.Command{
 		// localhost:9600/_node/stats/pipelines/ will return all Pipelines
 		// localhost:9600/_node/stats/pipelines/foo will return the foo Pipeline
 		u, _ := url.JoinPath(c.URL, "/_node/stats/pipelines", cliPipelineConfig.PipelineName)
-		resp, err := c.Client.Get(u)
 
+		resp, err := c.Client.Get(u)
 		if err != nil {
 			check.ExitError(err)
 		}
@@ -309,49 +318,54 @@ var pipelineFlowCmd = &cobra.Command{
 		}
 
 		defer resp.Body.Close()
-		err = json.NewDecoder(resp.Body).Decode(&pp)
 
+		err = json.NewDecoder(resp.Body).Decode(&pp)
 		if err != nil {
 			check.ExitError(err)
 		}
 
-		states := make([]int, 0, len(pp.Pipelines))
+		states := make([]check.Status, 0, len(pp.Pipelines))
 
 		// Check the flow metrics for each pipeline
 		var summary strings.Builder
 
 		for name, pipe := range pp.Pipelines {
 			summary.WriteString("\n \\_")
+
 			if thresholds.Critical.DoesViolate(pipe.Flow.QueueBackpressure.Current) {
 				states = append(states, check.Critical)
-				summary.WriteString(fmt.Sprintf("[CRITICAL] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current))
+
+				fmt.Fprintf(&summary, "[CRITICAL] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current)
 			} else if thresholds.Warning.DoesViolate(pipe.Flow.QueueBackpressure.Current) {
 				states = append(states, check.Warning)
-				summary.WriteString(fmt.Sprintf("[WARNING] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current))
+
+				fmt.Fprintf(&summary, "[WARNING] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current)
 			} else {
 				states = append(states, check.OK)
-				summary.WriteString(fmt.Sprintf("[OK] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current))
+
+				fmt.Fprintf(&summary, "[OK] queue_backpressure_%s:%.2f;", name, pipe.Flow.QueueBackpressure.Current)
 			}
 
 			// Generate perfdata for each event
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.queue_backpressure_%s", name), //nolint: perfsprint
 				Warn:  thresholds.Warning,
 				Crit:  thresholds.Critical,
 				Value: pipe.Flow.QueueBackpressure.Current})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.output_throughput", name),
 				Value: pipe.Flow.OutputThroughput.Current})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.input_throughput", name),
 				Value: pipe.Flow.InputThroughput.Current})
-			perfList.Add(&perfdata.Perfdata{
+			perfList.Add(&check.Perfdata{
 				Label: fmt.Sprintf("pipelines.%s.filter_throughput", name),
 				Value: pipe.Flow.FilterThroughput.Current})
 		}
 
 		// Validate the various subchecks and use the worst state as return code
-		switch result.WorstState(states...) {
+		//nolint: exhaustive
+		switch check.WorstState(states...) {
 		case 0:
 			rc = check.OK
 			output = "Flow metrics alright"
@@ -366,7 +380,7 @@ var pipelineFlowCmd = &cobra.Command{
 			output = "Flow metrics status unknown"
 		}
 
-		check.ExitRaw(rc, output, summary.String(), "|", perfList.String())
+		check.ExitWithPerfdata(rc, perfList, output, summary.String())
 	},
 }
 
